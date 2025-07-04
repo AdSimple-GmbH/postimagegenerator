@@ -1,0 +1,202 @@
+---
+description: Apply these rules when making changes to the project
+globs:
+alwaysApply: true
+---
+
+Update this rule if user requested changes to the project requirement, etc.
+# Project Requirements Document (PRD)
+
+## 1. Project Overview
+
+This project is a WordPress plugin that automatically generates a featured image for any post by sending its title and content to the OpenAI GPT Image-1 API. Inside the WordPress post editor, users with permission to set featured images will see an **“AI Beitragsbild festlegen”** link beneath the Featured Image panel. Clicking it opens a modal where they can tweak style, mood, quality preset, and dimensions before triggering the image-generation API. Once images are returned, the user picks their favorite, uploads it to the Media Library, and then confirms it as the post’s featured image.
+
+We’re building this plugin to streamline creative workflows, eliminate the need for external image editors, and empower non-designers to produce on-brand visuals in seconds. Key success criteria include reliable API integration, smooth user experience (modal-based flow, clear previews, role-based access), solid error handling, and full English/German translation support. The plugin must feel native to WordPress, secure API credentials, and respect existing user roles and permissions.
+
+## 2. In-Scope vs. Out-of-Scope
+
+**In-Scope (Version 1)**
+
+*   Plugin installation via ZIP or WordPress directory
+
+*   Settings page under **Settings → AI Featured Image** for:
+
+    *   Storing OpenAI GPT Image-1 API key
+    *   Selecting image dimensions (1024×1024, 1024×1536, 1536×1024)
+    *   Toggling file formats (JPEG, PNG)
+    *   Enabling/disabling quality presets (high, medium, low)
+    *   Defining available styles/moods (realistic, cartoon, minimal)
+
+*   “AI Beitragsbild festlegen” link in post editors (block & classic)
+
+*   Modal UI for prompt customization (style, mood, dimensions, quality)
+
+*   API call to OpenAI GPT Image-1 with title & excerpt
+
+*   Preview one or multiple images per user’s quality-settings
+
+*   Manual selection → upload to Media Library via WP media API
+
+*   Manual confirmation of featured image via standard button
+
+*   Role-based access (Admins, Editors, Authors)
+
+*   Internationalization (English default, German translations)
+
+*   Error display in modal with retry option
+
+**Out-of-Scope (Deferred to Later Phases)**
+
+*   Bulk-generation of featured images for multiple posts
+*   Automatic assignment of generated image without confirmation
+*   Usage tracking, counters, or monthly quotas in UI
+*   Additional languages beyond English and German
+*   Placeholder fallback image on persistent API failure
+*   Advanced styling (e.g., custom CSS skins)
+
+## 3. User Flow
+
+When an administrator first installs and activates the plugin, they visit **Settings → AI Featured Image** to enter their OpenAI API key and choose default dimensions, file formats, quality presets, and available styles/moods. Once saved, these settings apply site-wide to all users who can set featured images.
+
+An Author or Editor opens a post in the block or classic editor and scrolls to the Featured Image panel. They click **“AI Beitragsbild festlegen,”** which brings up a modal pre-populated with the post’s title and a content excerpt. Within the modal, they adjust style (realistic, cartoon, minimal), mood, dimensions, and quality preset, then click **Generate**. A spinner appears while the plugin sends the prompt to OpenAI. When images arrive, the modal displays previews. The user selects one, and the plugin uploads it to the Media Library. Finally, the user closes the modal and clicks **Set featured image** in the standard panel to confirm their choice.
+
+## 4. Core Features
+
+*   **Settings Page**
+
+    *   Securely store OpenAI GPT Image-1 API key
+    *   Choose image dimensions, file formats, quality presets
+    *   Configure styles/moods available in the modal
+
+*   **Role-Based Access Control**
+
+    *   Reuse WP’s built-in capabilities: only roles that can set featured images see the AI link
+
+*   **Editor Integration**
+
+    *   Add **“AI Beitragsbild festlegen”** link under Featured Image panel in both Gutenberg and Classic editors
+
+*   **Modal Prompt UI**
+
+    *   Prepopulate title & excerpt
+    *   Dropdowns for style, mood, dimensions, quality
+    *   Generate button with progress spinner
+
+*   **OpenAI API Connector**
+
+    *   Send POST request to GPT Image-1 endpoint
+    *   Pass JSON payload: prompt text, dimensions, style, quality
+
+*   **Image Preview & Selection**
+
+    *   Display returned images (1–n based on quality presets)
+    *   Allow user to pick one or regenerate
+
+*   **Media Library Upload**
+
+    *   Use `wp_upload_bits()` or WP REST API to save image
+    *   Return attachment ID
+
+*   **Manual Confirmation**
+
+    *   Do not override existing featured image until user clicks WP’s **Set featured image**
+
+*   **Internationalization (i18n)**
+
+    *   Wrap all strings in `__()` or `_e()`
+    *   Provide German `.po`/`.mo` translations
+
+*   **Error Handling**
+
+    *   Show API errors in modal
+    *   Allow user to retry or adjust settings
+
+## 5. Tech Stack & Tools
+
+*   **Backend**
+
+    *   PHP 7.4+
+    *   WordPress Plugin API
+    *   WordPress Settings API
+    *   WP REST API for media uploads
+
+*   **Frontend**
+
+    *   JavaScript (ES6+)
+    *   HTML5 & CSS3
+    *   WordPress block editor (Gutenberg) & Classic compatibility
+
+*   **AI Service**
+
+    *   OpenAI GPT Image-1 API (DALL·E–style model)
+
+*   **Internationalization**
+
+    *   WordPress i18n (`gettext`)
+
+*   **IDE & Extensions**
+
+    *   Cursor (AI-powered coding assistance)
+
+## 6. Non-Functional Requirements
+
+*   **Performance**
+
+    *   Modal open/close within 200 ms
+    *   API response display within 3–5 seconds (depending on OpenAI latency)
+
+*   **Security**
+
+    *   Sanitize and escape all user inputs
+    *   Store API key using `register_setting()` with `sanitize_callback`
+    *   Use HTTPS for all external requests
+
+*   **Usability**
+
+    *   Clear spinner and progress indicators
+    *   Accessible labels and keyboard navigation in modal
+    *   Responsive layout for different screen sizes
+
+*   **Compliance**
+
+    *   No user data persisted beyond prompt submission
+    *   GDPR-compatible: no third-party cookies or trackers
+
+## 7. Constraints & Assumptions
+
+*   **OpenAI Availability**
+
+    *   Relies on GPT Image-1 endpoint; service outages will surface errors
+
+*   **WordPress Version**
+
+    *   Minimum WP 5.8+ with REST API and Gutenberg
+
+*   **Server Requirements**
+
+    *   PHP JSON and cURL extensions enabled
+    *   Adequate file-upload permissions for Media Library
+
+*   **User Permissions**
+
+    *   Site admin must supply a valid API key
+
+## 8. Known Issues & Potential Pitfalls
+
+*   **API Rate Limits & Timeouts**
+
+    *   Mitigation: allow users to retry; display clear error detailing rate limit hit
+
+*   **Large File Sizes**
+
+    *   Mitigation: enforce max-dimensions and quality presets to control output size
+
+*   **Model Changes or Deprecation**
+
+    *   Mitigation: settings page to allow switching to a newer model name/API path
+
+*   **Localization Gaps**
+
+    *   Mitigation: bundle German translations; fall back gracefully to English
+
+This PRD is intended to serve as the definitive reference for all upcoming technical documentation (tech stack selection, frontend guidelines, backend structure, security guidelines, etc.). All features, flows, and requirements are specified clearly to eliminate ambiguity.
