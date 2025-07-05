@@ -1,11 +1,11 @@
 <?php
 /**
- * Plugin Name:       AI Featured Image
- * Plugin URI:        https://example.com/
+ * Plugin Name:       AI Featured Image Generator
+ * Plugin URI:        https://www.ostheimer.at/ai-featured-image-generator/
  * Description:       Automatically generates a featured image for any post using the OpenAI API.
  * Version:           1.0.0
- * Author:            Your Name
- * Author URI:        https://example.com/
+ * Author:            Andreas Ostheimer
+ * Author URI:        https://www.ostheimer.at
  * License:           GPL-2.0-or-later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       ai-featured-image

@@ -50,8 +50,9 @@
             subtree: true
         });
 
-        // Generate button click
-        $('#ai-generate-image-button').on('click', function() {
+        // Generate button click - Use event delegation for dynamically added modal
+        $(document).on('click', '#ai-generate-image-button', function() {
+            console.log('Generate button clicked.'); // Debugging line
             var button = $(this);
             var originalText = button.text();
             button.text('Generating...').prop('disabled', true);
@@ -66,7 +67,10 @@
                 nonce: aiFeaturedImageData.nonce
             };
 
+            console.log('Sending data to server:', data); // Debugging line
+
             $.post(aiFeaturedImageData.ajax_url, data, function(response) {
+                console.log('Received response from server:', response); // Debugging line
                 if (response.success) {
                     var previewContainer = $('#ai-image-preview-container');
                     previewContainer.empty();
@@ -98,14 +102,16 @@
                 } else {
                     errorContainer.text(response.data.message).show();
                 }
-            }).fail(function() {
-                errorContainer.text('An unknown error occurred.').show();
+            }).fail(function(jqXHR, textStatus, errorThrown) {
+                console.error('AJAX request failed:', textStatus, errorThrown); // Debugging line
+                errorContainer.text('An unknown error occurred. Check the browser console for details.').show();
             }).always(function() {
                 button.text(originalText).prop('disabled', false);
             });
         });
 
-        $('#ai-set-featured-image-button').on('click', function() {
+        // Set Featured Image button click - Use event delegation
+        $(document).on('click', '#ai-set-featured-image-button', function() {
             var selectedImage = $('#ai-image-preview-container img.selected');
             if (selectedImage.length === 0) {
                 alert('Please select an image first.');
