@@ -1,10 +1,12 @@
 (function($) {
     'use strict';
+    console.log('DEBUG: admin.js script loaded and executing.');
 
     $(function() {
         var modal = $('#ai-featured-image-modal');
         var closeModal = $('.ai-modal-close');
         var errorContainer = $('#ai-modal-error-container');
+        var spinner = modal.find('.spinner');
 
         // Function to open the modal
         function openModal() {
@@ -52,10 +54,10 @@
 
         // Generate button click - Use event delegation for dynamically added modal
         $(document).on('click', '#ai-generate-image-button', function() {
-            console.log('Generate button clicked.'); // Debugging line
+            console.log('DEBUG: Generate button clicked.');
             var button = $(this);
-            var originalText = button.text();
-            button.text('Generating...').prop('disabled', true);
+            button.prop('disabled', true);
+            spinner.addClass('is-active');
             errorContainer.hide().empty();
             $('#ai-image-preview-container').empty();
 
@@ -67,10 +69,7 @@
                 nonce: aiFeaturedImageData.nonce
             };
 
-            console.log('Sending data to server:', data); // Debugging line
-
             $.post(aiFeaturedImageData.ajax_url, data, function(response) {
-                console.log('Received response from server:', response); // Debugging line
                 if (response.success) {
                     var previewContainer = $('#ai-image-preview-container');
                     previewContainer.empty();
@@ -79,7 +78,7 @@
                         response.data.images.forEach(function(image) {
                             var imgElement = $('<img>', {
                                 src: image.url,
-                                'data-b64': image.b64_json, // If you get base64 data
+                                'data-attachment-id': image.attachment_id,
                                 css: {
                                     'max-width': '150px',
                                     'height': 'auto',
@@ -103,52 +102,75 @@
                     errorContainer.text(response.data.message).show();
                 }
             }).fail(function(jqXHR, textStatus, errorThrown) {
-                console.error('AJAX request failed:', textStatus, errorThrown); // Debugging line
-                errorContainer.text('An unknown error occurred. Check the browser console for details.').show();
+                console.error('DEBUG: AJAX request failed. Status:', textStatus, 'Error:', errorThrown);
+                console.error('DEBUG: Server Response:', jqXHR.responseText);
+                errorContainer.text('An unknown server error occurred. Check the browser console for details.').show();
             }).always(function() {
-                button.text(originalText).prop('disabled', false);
+                button.prop('disabled', false);
+                spinner.removeClass('is-active');
             });
         });
 
         // Set Featured Image button click - Use event delegation
         $(document).on('click', '#ai-set-featured-image-button', function() {
+            console.log('DEBUG: "Set as Featured Image" button clicked.');
             var selectedImage = $('#ai-image-preview-container img.selected');
+            
             if (selectedImage.length === 0) {
+                console.log('DEBUG: No image selected.');
                 alert('Please select an image first.');
                 return;
             }
+            
+            var attachmentId = selectedImage.data('attachment-id');
+            console.log('DEBUG: Attachment ID found:', attachmentId);
 
-            var button = $(this);
-            var originalText = button.text();
-            button.text('Uploading...').prop('disabled', true);
-            errorContainer.hide().empty();
+            if (!attachmentId) {
+                console.error('DEBUG: Attachment ID is missing!');
+                errorContainer.text('Could not find attachment ID. Please try regenerating the image.').show();
+                return;
+            }
 
-            var data = {
-                action: 'upload_ai_image',
-                image_url: selectedImage.attr('src'),
-                post_id: aiFeaturedImageData.post_id,
-                nonce: aiFeaturedImageData.nonce
-            };
+            // Set the featured image in the editor
+            if (aiFeaturedImageData.is_gutenberg) {
+                console.log('DEBUG: Gutenberg editor detected. Dispatching action.');
+                wp.data.dispatch('core/editor').editPost({ featured_media: attachmentId });
+            } else {
+                console.log('DEBUG: Classic editor detected. Sending AJAX request.');
+                // For classic editor, we need a different approach.
+                // We'll use a simple AJAX call to set the thumbnail.
+                 $.post(aiFeaturedImageData.ajax_url, {
+                    action: 'set_ai_featured_image',
+                    post_id: aiFeaturedImageData.post_id,
+                    attachment_id: attachmentId,
+                    nonce: aiFeaturedImageData.nonce
+                }, function(response) {
+                    console.log('DEBUG: AJAX success. Response:', response);
+                    if (response.success) {
+                        // 1. Set the hidden input value. This is THE CRUCIAL step for saving the post.
+                        // This ensures the change is saved when the user clicks "Update".
+                        $('#_thumbnail_id').val(attachmentId);
 
-            $.post(aiFeaturedImageData.ajax_url, data, function(response) {
-                if (response.success) {
-                    // Update the featured image in the editor
-                    if (aiFeaturedImageData.is_gutenberg) {
-                        wp.data.dispatch('core/editor').editPost({ featured_media: response.data.attachment_id });
+                        // 2. Update the visual representation in the meta box.
+                        // The AJAX response contains the new HTML for the image preview.
+                        $('#set-post-thumbnail').html(response.data.thumbnail_html);
+
+                        // 3. Show the "remove" link. It might be hidden by a class or display:none.
+                        $('#remove-post-thumbnail').removeClass('hidden').show();
+                        
                     } else {
-                        // For classic editor
-                        $('#set-post-thumbnail').html('<img src="' + response.data.thumbnail_url + '" />');
-                        $('#remove-post-thumbnail').show();
+                        console.error('DEBUG: AJAX request returned an error.', response.data.message);
+                        errorContainer.text(response.data.message).show();
                     }
-                    hideModal();
-                } else {
-                    errorContainer.text(response.data.message).show();
-                }
-            }).fail(function() {
-                errorContainer.text('An unknown error occurred during upload.').show();
-            }).always(function() {
-                button.text(originalText).prop('disabled', false);
-            });
+                }).fail(function(jqXHR, textStatus, errorThrown) {
+                    console.error('DEBUG: AJAX request failed. Status:', textStatus, 'Error:', errorThrown);
+                    console.error('DEBUG: Server Response:', jqXHR.responseText);
+                    errorContainer.text('An unknown server error occurred while setting the image.').show();
+                });
+            }
+            
+            console.log('DEBUG: Closing modal.');
+            hideModal();
         });
 
     });

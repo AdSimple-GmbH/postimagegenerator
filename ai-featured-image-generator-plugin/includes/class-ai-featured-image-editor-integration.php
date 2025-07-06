@@ -174,6 +174,7 @@ class AI_Featured_Image_Editor_Integration {
                 <div class="ai-modal-footer">
                     <button class="button" id="ai-set-featured-image-button" style="display:none;"><?php esc_html_e( 'Set as Featured Image', 'ai-featured-image' ); ?></button>
                     <button class="button button-primary" id="ai-generate-image-button"><?php esc_html_e( 'Generate', 'ai-featured-image' ); ?></button>
+                    <span class="spinner"></span>
                 </div>
             </div>
         </div>
