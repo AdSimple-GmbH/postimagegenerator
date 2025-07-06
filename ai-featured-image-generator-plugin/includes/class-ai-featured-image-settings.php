@@ -128,6 +128,22 @@ class AI_Featured_Image_Settings {
             'ai-featured-image-settings',
             'image_settings_section'
         );
+
+        // Debugging Settings Section
+        add_settings_section(
+            'debugging_settings_section',
+            __( 'Debugging', 'ai-featured-image' ),
+            '__return_false',
+            'ai-featured-image-settings'
+        );
+
+        add_settings_field(
+            'debug_mode',
+            __( 'Enable Debugging', 'ai-featured-image' ),
+            array( $this, 'render_debug_mode_field' ),
+            'ai-featured-image-settings',
+            'debugging_settings_section'
+        );
     }
 
     /**
@@ -226,6 +242,20 @@ class AI_Featured_Image_Settings {
     }
 
     /**
+     * Render the Debug Mode field.
+     */
+    public function render_debug_mode_field() {
+        $options = get_option( $this->option_name );
+        $debug_mode = isset( $options['debug_mode'] ) ? $options['debug_mode'] : false;
+        ?>
+        <label>
+            <input type="checkbox" name="<?php echo esc_attr( $this->option_name ); ?>[debug_mode]" value="1" <?php checked( $debug_mode, 1 ); ?>>
+            <?php esc_html_e( 'Enable logging to debug.log file inside the plugin includes folder.', 'ai-featured-image' ); ?>
+        </label>
+        <?php
+    }
+
+    /**
      * Sanitize the option values.
      *
      * @param array $input The input array.
@@ -259,7 +289,9 @@ class AI_Featured_Image_Settings {
         if ( isset( $input['styles_moods'] ) ) {
             $sanitized_input['styles_moods'] = sanitize_text_field( $input['styles_moods'] );
         }
-        
+
+        $sanitized_input['debug_mode'] = isset( $input['debug_mode'] ) && '1' === $input['debug_mode'];
+
         return $sanitized_input;
     }
 } 

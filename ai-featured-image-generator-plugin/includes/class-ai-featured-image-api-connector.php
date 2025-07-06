@@ -30,6 +30,11 @@ class AI_Featured_Image_API_Connector {
     }
 
     private function log_message( $message ) {
+        $options = get_option('ai_featured_image_options');
+        if ( empty( $options['debug_mode'] ) ) {
+            return;
+        }
+
         $timestamp = date( 'Y-m-d H:i:s' );
         if ( is_array( $message ) || is_object( $message ) ) {
             $log_message = print_r( $message, true );
@@ -43,11 +48,15 @@ class AI_Featured_Image_API_Connector {
      * AJAX callback to generate the image.
      */
     public function generate_image_callback() {
-        // Clear the log file for this new request
-        if ( file_exists( $this->log_file ) ) {
-            unlink( $this->log_file );
+        $options = get_option('ai_featured_image_options');
+
+        // Clear the log file for this new request only if debugging is on
+        if ( ! empty( $options['debug_mode'] ) ) {
+            if ( file_exists( $this->log_file ) ) {
+                unlink( $this->log_file );
+            }
+            $this->log_message('--- AJAX Request Start (Log file cleared) ---');
         }
-        $this->log_message('--- AJAX Request Start (Log file cleared) ---');
         
         check_ajax_referer( 'ai_featured_image_nonce', 'nonce' );
         $this->log_message('Nonce check passed.');
@@ -72,7 +81,6 @@ class AI_Featured_Image_API_Connector {
         }
         $this->log_message('Post object found.');
 
-        $options = get_option( 'ai_featured_image_options' );
         $api_key = ! empty( $options['api_key'] ) ? $options['api_key'] : '';
 
         if ( empty( $api_key ) ) {
@@ -115,7 +123,7 @@ class AI_Featured_Image_API_Connector {
                     'Content-Type'  => 'application/json',
                 ),
                 'body'    => wp_json_encode( $body ),
-                'timeout' => 60,
+                'timeout' => 120,
             )
         );
         $this->log_message('wp_remote_post finished.');
@@ -123,8 +131,18 @@ class AI_Featured_Image_API_Connector {
         $this->log_message($response);
 
         if ( is_wp_error( $response ) ) {
-            $this->log_message('Response is WP_Error: ' . $response->get_error_message());
-            wp_send_json_error( array( 'message' => $response->get_error_message() ) );
+            $error_code = $response->get_error_code();
+            $error_message = $response->get_error_message();
+            $this->log_message('Response is WP_Error: ' . $error_message);
+
+            // Provide a more user-friendly message for timeouts
+            if ( 'http_request_failed' === $error_code && strpos( $error_message, 'cURL error 28' ) !== false ) {
+                $user_message = __( 'The request to the image generation service timed out. This can happen with large image dimensions. Please try again. If the problem persists, you could try a smaller image size in the settings.', 'ai-featured-image' );
+            } else {
+                $user_message = $error_message;
+            }
+
+            wp_send_json_error( array( 'message' => $user_message ) );
         }
 
         $response_body = wp_remote_retrieve_body( $response );
