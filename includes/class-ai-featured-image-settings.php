@@ -98,6 +98,22 @@ class AI_Featured_Image_Settings {
         );
 
         add_settings_field(
+            'image_style',
+            __( 'Render Style (gpt-image-1)', 'ai-featured-image' ),
+            array( $this, 'render_image_style_field' ),
+            'ai-featured-image-settings',
+            'image_settings_section'
+        );
+
+        add_settings_field(
+            'num_images',
+            __( 'Number of Images', 'ai-featured-image' ),
+            array( $this, 'render_num_images_field' ),
+            'ai-featured-image-settings',
+            'image_settings_section'
+        );
+
+        add_settings_field(
             'file_format',
             __( 'File Format', 'ai-featured-image' ),
             array( $this, 'render_file_format_field' ),
@@ -148,6 +164,41 @@ class AI_Featured_Image_Settings {
                     <?php echo esc_html( $dim ); ?>
                 </option>
             <?php endforeach; ?>
+        </select>
+        <?php
+    }
+
+    /**
+     * Render the Image Style field for gpt-image-1.
+     */
+    public function render_image_style_field() {
+        $options = get_option( $this->option_name );
+        $image_style = isset( $options['image_style'] ) ? $options['image_style'] : 'vivid';
+        $available = array( 'vivid', 'natural' );
+        ?>
+        <select name="<?php echo esc_attr( $this->option_name ); ?>[image_style]">
+            <?php foreach ( $available as $style ) : ?>
+                <option value="<?php echo esc_attr( $style ); ?>" <?php selected( $image_style, $style ); ?>>
+                    <?php echo esc_html( ucfirst( $style ) ); ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+        <?php
+    }
+
+    /**
+     * Render the Number of Images field.
+     */
+    public function render_num_images_field() {
+        $options = get_option( $this->option_name );
+        $num_images = isset( $options['num_images'] ) ? intval( $options['num_images'] ) : 1;
+        ?>
+        <select name="<?php echo esc_attr( $this->option_name ); ?>[num_images]">
+            <?php for ( $i = 1; $i <= 4; $i++ ) : ?>
+                <option value="<?php echo esc_attr( $i ); ?>" <?php selected( $num_images, $i ); ?>>
+                    <?php echo esc_html( $i ); ?>
+                </option>
+            <?php endfor; ?>
         </select>
         <?php
     }
@@ -230,6 +281,19 @@ class AI_Featured_Image_Settings {
 
         if ( isset( $input['styles_moods'] ) ) {
             $sanitized_input['styles_moods'] = sanitize_text_field( $input['styles_moods'] );
+        }
+
+        if ( isset( $input['image_style'] ) ) {
+            $allowed = array( 'vivid', 'natural' );
+            $style = sanitize_text_field( $input['image_style'] );
+            $sanitized_input['image_style'] = in_array( $style, $allowed, true ) ? $style : 'vivid';
+        }
+
+        if ( isset( $input['num_images'] ) ) {
+            $n = intval( $input['num_images'] );
+            if ( $n < 1 ) { $n = 1; }
+            if ( $n > 4 ) { $n = 4; }
+            $sanitized_input['num_images'] = $n;
         }
         
         return $sanitized_input;

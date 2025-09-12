@@ -91,18 +91,23 @@ class AI_Featured_Image_Editor_Integration {
             return;
         }
 
+        $css_path = plugin_dir_path( __FILE__ ) . '../assets/css/admin.css';
+        $js_path  = plugin_dir_path( __FILE__ ) . '../assets/js/admin.js';
+        $css_ver  = file_exists( $css_path ) ? filemtime( $css_path ) : '1.0.0';
+        $js_ver   = file_exists( $js_path ) ? filemtime( $js_path ) : '1.0.0';
+
         wp_enqueue_style(
             'ai-featured-image-admin',
             plugin_dir_url( __FILE__ ) . '../assets/css/admin.css',
             array(),
-            '1.0.0'
+            $css_ver
         );
 
         wp_enqueue_script(
             'ai-featured-image-admin',
             plugin_dir_url( __FILE__ ) . '../assets/js/admin.js',
             array( 'jquery' ),
-            '1.0.0',
+            $js_ver,
             true
         );
 
@@ -114,6 +119,11 @@ class AI_Featured_Image_Editor_Integration {
                 'post_id'  => get_the_ID(),
                 'nonce'    => wp_create_nonce( 'ai_featured_image_nonce' ),
                 'is_gutenberg' => get_current_screen()->is_block_editor(),
+                'i18n'     => array(
+                    'add_keywords_button' => __( 'AI Keywords hinzufügen', 'ai-featured-image' ),
+                    'generating_keywords' => __( 'Generating...', 'ai-featured-image' ),
+                ),
+                'asset_version' => $js_ver,
             )
         );
     }
@@ -142,22 +152,13 @@ class AI_Featured_Image_Editor_Integration {
                     <table class="form-table">
                         <tbody>
                             <tr>
-                                <th scope="row"><label for="ai-image-style"><?php esc_html_e( 'Style/Mood', 'ai-featured-image' ); ?></label></th>
+                                <th scope="row"><label for="ai-num-images"><?php esc_html_e( 'Number of Images', 'ai-featured-image' ); ?></label></th>
                                 <td>
-                                    <select id="ai-image-style" name="ai_image_style">
-                                        <?php foreach ( $styles_moods as $style ) : ?>
-                                            <option value="<?php echo esc_attr( $style ); ?>"><?php echo esc_html( ucfirst( $style ) ); ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </td>
-                            </tr>
-                            <tr>
-                                <th scope="row"><label for="ai-image-quality"><?php esc_html_e( 'Quality', 'ai-featured-image' ); ?></label></th>
-                                <td>
-                                    <select id="ai-image-quality" name="ai_image_quality">
-                                        <?php foreach ( $quality_presets as $quality ) : ?>
-                                            <option value="<?php echo esc_attr( $quality ); ?>"><?php echo esc_html( ucfirst( $quality ) ); ?></option>
-                                        <?php endforeach; ?>
+                                    <?php $num_images = ! empty( $options['num_images'] ) ? intval( $options['num_images'] ) : 1; ?>
+                                    <select id="ai-num-images" name="ai_num_images">
+                                        <?php for ( $i = 1; $i <= 4; $i++ ) : ?>
+                                            <option value="<?php echo esc_attr( $i ); ?>" <?php selected( $num_images, $i ); ?>><?php echo esc_html( $i ); ?></option>
+                                        <?php endfor; ?>
                                     </select>
                                 </td>
                             </tr>
@@ -169,6 +170,10 @@ class AI_Featured_Image_Editor_Integration {
                             </tr>
                         </tbody>
                     </table>
+                    <div id="ai-loading" class="ai-loading" style="display:none;">
+                        <div class="ai-spinner"></div>
+                        <span class="ai-loading-text">Generating...</span>
+                    </div>
                     <div id="ai-image-preview-container" style="margin-top: 20px;"></div>
                 </div>
                 <div class="ai-modal-footer">

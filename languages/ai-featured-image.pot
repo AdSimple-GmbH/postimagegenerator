@@ -70,13 +70,10 @@ msgid "Enter a comma-separated list of available styles or moods."
 msgstr ""
 
 #: includes/class-ai-featured-image-editor-integration.php:48
-#: assets/js/editor.js:9
-#: assets/js/editor.js:21
 msgid "AI Beitragsbild festlegen"
 msgstr ""
 
 #: includes/class-ai-featured-image-editor-integration.php:84
-#: assets/js/editor.js:8
 msgid "Generate AI Featured Image"
 msgstr ""
 
@@ -84,20 +81,32 @@ msgstr ""
 msgid "Set as Featured Image"
 msgstr ""
 
+#: includes/class-ai-featured-image-editor-integration.php:73
+msgid "AI Keywords hinzufügen"
+msgstr ""
+
+#: includes/class-ai-featured-image-editor-integration.php:74
+msgid "Generating..."
+msgstr ""
+
 #: includes/class-ai-featured-image-api-connector.php:33
 #: includes/class-ai-featured-image-api-connector.php:67
+#: includes/class-ai-featured-image-api-connector.php:95
 msgid "You do not have permission to perform this action."
 msgstr ""
 
 #: includes/class-ai-featured-image-api-connector.php:40
+#: includes/class-ai-featured-image-api-connector.php:102
 msgid "Invalid Post ID."
 msgstr ""
 
 #: includes/class-ai-featured-image-api-connector.php:45
+#: includes/class-ai-featured-image-api-connector.php:107
 msgid "Post not found."
 msgstr ""
 
 #: includes/class-ai-featured-image-api-connector.php:52
+#: includes/class-ai-featured-image-api-connector.php:114
 msgid "OpenAI API key is not set."
 msgstr ""
 
@@ -107,4 +116,8 @@ msgstr ""
 
 #: includes/class-ai-featured-image-api-connector.php:73
 msgid "Invalid data provided."
+msgstr ""
+
+#: includes/class-ai-featured-image-api-connector.php:146
+msgid "Could not retrieve keywords from OpenAI."
 msgstr "" 

@@ -1,8 +1,3 @@
----
-description: Apply these rules when making changes to the project
-globs:
-alwaysApply: true
----
 
 Update this rule if user requested changes to the project requirement, etc.
 # Project Requirements Document (PRD)
@@ -45,6 +40,9 @@ We’re building this plugin to streamline creative workflows, eliminate the nee
 
 *   Error display in modal with retry option
 
+*   AI-powered keyword generation (10 keywords) based on post title and content using `gpt-4o`.
+*   "AI Schlagwörter hinzufügen" button inside the default "Tags" panel in both editors.
+
 **Out-of-Scope (Deferred to Later Phases)**
 
 *   Bulk-generation of featured images for multiple posts
@@ -79,13 +77,14 @@ An Author or Editor opens a post in the block or classic editor and scrolls to t
 *   **Modal Prompt UI**
 
     *   Prepopulate title & excerpt
-    *   Dropdowns for style, mood, dimensions, quality
+    *   Dropdowns for style (vivid/natural) and dimensions
+    *   Number of images (1–4)
     *   Generate button with progress spinner
 
 *   **OpenAI API Connector**
 
-    *   Send POST request to GPT Image-1 endpoint
-    *   Pass JSON payload: prompt text, dimensions, style, quality
+    *   Send POST request to GPT Image endpoint (`gpt-image-1`)
+    *   Pass JSON payload: prompt text, dimensions (e.g., 1024x1024), style (vivid|natural), n (1–4)
 
 *   **Image Preview & Selection**
 
@@ -111,6 +110,12 @@ An Author or Editor opens a post in the block or classic editor and scrolls to t
     *   Show API errors in modal
     *   Allow user to retry or adjust settings
 
+*   **AI Keyword Generator**
+    *   Adds an "AI Schlagwörter hinzufügen" button to the "Tags" meta box.
+    *   On click, sends post title and an excerpt of the content to OpenAI.
+    *   Uses the `gpt-4o` model to generate 10 relevant, comma-separated keywords.
+    *   Automatically populates the tags input field with the suggestions.
+
 ## 5. Tech Stack & Tools
 
 *   **Backend**
@@ -128,7 +133,7 @@ An Author or Editor opens a post in the block or classic editor and scrolls to t
 
 *   **AI Service**
 
-    *   OpenAI GPT Image-1 API (DALL·E–style model)
+    *   OpenAI API for Image Generation (`gpt-image-1`) and Text Generation (`gpt-4o`).
 
 *   **Internationalization**
 
@@ -196,6 +201,11 @@ An Author or Editor opens a post in the block or classic editor and scrolls to t
     *   Mitigation: settings page to allow switching to a newer model name/API path
 
 *   **Localization Gaps**
+
+    *   Mitigation: bundle German translations; fall back gracefully to English
+
+This PRD is intended to serve as the definitive reference for all upcoming technical documentation (tech stack selection, frontend guidelines, backend structure, security guidelines, etc.). All features, flows, and requirements are specified clearly to eliminate ambiguity.
+
 
     *   Mitigation: bundle German translations; fall back gracefully to English
 

@@ -107,4 +107,16 @@ msgstr "Bild konnte nicht von OpenAI abgerufen werden."
 
 #: includes/class-ai-featured-image-api-connector.php:73
 msgid "Invalid data provided."
-msgstr "Ungültige Daten angegeben." 
+msgstr "Ungültige Daten angegeben."
+
+#: includes/class-ai-featured-image-api-connector.php:146
+msgid "Could not retrieve keywords from OpenAI."
+msgstr "Schlagwörter konnten nicht von OpenAI abgerufen werden."
+
+#: includes/class-ai-featured-image-editor-integration.php:73
+msgid "AI Keywords hinzufügen"
+msgstr "KI-Schlagwörter hinzufügen"
+
+#: includes/class-ai-featured-image-editor-integration.php:74
+msgid "Generating..."
+msgstr "Wird generiert..." 
