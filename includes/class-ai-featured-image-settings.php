@@ -49,6 +49,10 @@ class AI_Featured_Image_Settings {
 		add_settings_field( 'styles_moods', __( 'Available Styles/Moods', 'ai-featured-image' ), array( $this, 'render_styles_moods_field' ), 'ai-featured-image-settings', 'image_settings' );
 		add_settings_field( 'image_style', __( 'Render Style (gpt-image-1)', 'ai-featured-image' ), array( $this, 'render_image_style_field' ), 'ai-featured-image-settings', 'image_settings' );
 		add_settings_field( 'num_images', __( 'Number of Images', 'ai-featured-image' ), array( $this, 'render_num_images_field' ), 'ai-featured-image-settings', 'image_settings' );
+
+		add_settings_section( 'automation_settings', __( 'Automation', 'ai-featured-image' ), '__return_false', 'ai-featured-image-settings' );
+		add_settings_field( 'auto_on_publish', __( 'Auto-generate on publish', 'ai-featured-image' ), array( $this, 'render_auto_on_publish_field' ), 'ai-featured-image-settings', 'automation_settings' );
+		add_settings_field( 'auto_only_if_missing', __( 'Only if no featured image is set', 'ai-featured-image' ), array( $this, 'render_auto_only_if_missing_field' ), 'ai-featured-image-settings', 'automation_settings' );
 	}
 
 	public function render_api_key_field() {
@@ -125,6 +129,22 @@ class AI_Featured_Image_Settings {
 		<?php
 	}
 
+	public function render_auto_on_publish_field() {
+		$options = get_option( $this->option_name );
+		$enabled = ! empty( $options['auto_on_publish'] );
+		?>
+		<label><input type="checkbox" name="<?php echo esc_attr( $this->option_name ); ?>[auto_on_publish]" value="1" <?php checked( $enabled, true ); ?> /> <?php esc_html_e( 'Generate an AI featured image automatically on publish', 'ai-featured-image' ); ?></label>
+		<?php
+	}
+
+	public function render_auto_only_if_missing_field() {
+		$options = get_option( $this->option_name );
+		$only_missing = isset( $options['auto_only_if_missing'] ) ? (bool) $options['auto_only_if_missing'] : true;
+		?>
+		<label><input type="checkbox" name="<?php echo esc_attr( $this->option_name ); ?>[auto_only_if_missing]" value="1" <?php checked( $only_missing, true ); ?> /> <?php esc_html_e( 'Only run if no featured image is already set', 'ai-featured-image' ); ?></label>
+		<?php
+	}
+
 	public function sanitize_options( $input ) {
 		$san = array();
 		if ( isset( $input['api_key'] ) ) $san['api_key'] = sanitize_text_field( $input['api_key'] );
@@ -132,14 +152,10 @@ class AI_Featured_Image_Settings {
 		if ( isset( $input['file_format'] ) ) $san['file_format'] = in_array( $input['file_format'], array( 'jpeg', 'png' ), true ) ? $input['file_format'] : 'jpeg';
 		if ( isset( $input['quality_presets'] ) && is_array( $input['quality_presets'] ) ) $san['quality_presets'] = array_map( 'sanitize_text_field', $input['quality_presets'] );
 		if ( isset( $input['styles_moods'] ) ) $san['styles_moods'] = sanitize_text_field( $input['styles_moods'] );
-		if ( isset( $input['image_style'] ) ) {
-			$style = sanitize_text_field( $input['image_style'] );
-			$san['image_style'] = in_array( $style, array( 'vivid', 'natural' ), true ) ? $style : 'vivid';
-		}
-		if ( isset( $input['num_images'] ) ) {
-			$n = max( 1, min( 4, intval( $input['num_images'] ) ) );
-			$san['num_images'] = $n;
-		}
+		if ( isset( $input['image_style'] ) ) { $style = sanitize_text_field( $input['image_style'] ); $san['image_style'] = in_array( $style, array( 'vivid','natural' ), true ) ? $style : 'vivid'; }
+		if ( isset( $input['num_images'] ) ) { $n = max(1, min(4, intval( $input['num_images'] ))); $san['num_images'] = $n; }
+		$san['auto_on_publish']      = ! empty( $input['auto_on_publish'] ) ? 1 : 0;
+		$san['auto_only_if_missing'] = isset( $input['auto_only_if_missing'] ) ? ( $input['auto_only_if_missing'] ? 1 : 0 ) : 1;
 		return $san;
 	}
 }

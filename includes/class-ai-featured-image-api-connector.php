@@ -20,6 +20,93 @@ class AI_Featured_Image_API_Connector {
         // AJAX action for generating the image.
         add_action( 'wp_ajax_generate_ai_image', array( $this, 'generate_image_callback' ) );
         add_action( 'wp_ajax_upload_ai_image', array( $this, 'upload_image_callback' ) );
+        // Schedule async generation on first publish
+        add_action( 'transition_post_status', array( $this, 'maybe_schedule_on_publish' ), 10, 3 );
+        add_action( 'ai_featured_image_generate_async', array( $this, 'handle_generate_async' ), 10, 1 );
+    }
+
+    private function build_prompt( $post ) {
+        return sprintf(
+            'Create a high-quality featured image for a blog post titled "%s". The content is about: %s. Do not include any text, captions, labels, watermarks, typography, or logos in the image (text-free image).',
+            $post->post_title,
+            wp_strip_all_tags( $post->post_excerpt ? $post->post_excerpt : wp_trim_words( $post->post_content, 50 ) )
+        );
+    }
+
+    private function log_line( $message, array $context = array() ) {
+        $upload = wp_upload_dir();
+        $path   = trailingslashit( $upload['basedir'] ) . 'ai-featured-image.log';
+        $entry  = array( 'ts' => gmdate( 'c' ), 'message' => $message, 'context' => $context );
+        $line   = wp_json_encode( $entry ) . PHP_EOL;
+        // ensure dir exists
+        if ( ! is_dir( $upload['basedir'] ) ) { @wp_mkdir_p( $upload['basedir'] ); }
+        if ( ! @file_put_contents( $path, $line, FILE_APPEND | LOCK_EX ) ) {
+            error_log( '[ai-featured-image] ' . $line );
+        }
+    }
+
+    public function maybe_schedule_on_publish( $new_status, $old_status, $post ) {
+        if ( 'publish' !== $new_status || 'publish' === $old_status ) return; // only first publish
+        if ( 'post' !== $post->post_type ) return;
+
+        $options = get_option( 'ai_featured_image_options' );
+        if ( empty( $options['auto_on_publish'] ) ) return;
+        $only_if_missing = isset( $options['auto_only_if_missing'] ) ? (bool) $options['auto_only_if_missing'] : true;
+        if ( $only_if_missing && has_post_thumbnail( $post ) ) return;
+
+        // Avoid duplicate scheduling
+        $hook = 'ai_featured_image_generate_async';
+        if ( ! wp_next_scheduled( $hook, array( $post->ID ) ) ) {
+            wp_schedule_single_event( time() + 10, $hook, array( $post->ID ) );
+            $this->log_line( 'scheduled_async_generation', array( 'post_id' => $post->ID ) );
+        }
+    }
+
+    public function handle_generate_async( $post_id ) {
+        $post = get_post( $post_id );
+        if ( ! $post || 'post' !== $post->post_type ) { $this->log_line( 'skip_async_invalid_post', array( 'post_id' => $post_id ) ); return; }
+        // Skip if already has thumbnail
+        if ( has_post_thumbnail( $post ) ) { $this->log_line( 'skip_async_has_thumbnail', array( 'post_id' => $post_id ) ); return; }
+
+        $options = get_option( 'ai_featured_image_options' );
+        $api_key = ! empty( $options['api_key'] ) ? $options['api_key'] : '';
+        $size    = ! empty( $options['image_dimensions'] ) ? $options['image_dimensions'] : '1024x1024';
+        if ( empty( $api_key ) ) { $this->log_line( 'skip_async_missing_key', array( 'post_id' => $post_id ) ); return; }
+
+        $prompt  = $this->build_prompt( $post );
+        $api_url = 'https://api.openai.com/v1/images/generations';
+        $body    = array( 'model' => 'gpt-image-1', 'prompt' => $prompt, 'n' => 1, 'size' => $size );
+        $this->log_line( 'async_request', array( 'post_id' => $post_id, 'body' => $body ) );
+
+        $response = wp_remote_post( $api_url, array(
+            'headers' => array( 'Authorization' => 'Bearer ' . $api_key, 'Content-Type' => 'application/json' ),
+            'body'    => wp_json_encode( $body ),
+            'timeout' => 120,
+        ) );
+        if ( is_wp_error( $response ) ) { $this->log_line( 'async_transport_error', array( 'post_id' => $post_id, 'error' => $response->get_error_message() ) ); return; }
+        $data = json_decode( wp_remote_retrieve_body( $response ), true );
+        if ( isset( $data['error'] ) ) { $this->log_line( 'async_api_error', array( 'post_id' => $post_id, 'error' => $data['error'] ) ); return; }
+        if ( empty( $data['data'][0] ) ) { $this->log_line( 'async_no_image', array( 'post_id' => $post_id ) ); return; }
+
+        $url = isset( $data['data'][0]['url'] ) ? esc_url_raw( $data['data'][0]['url'] ) : '';
+        $b64 = isset( $data['data'][0]['b64_json'] ) ? $data['data'][0]['b64_json'] : '';
+
+        require_once( ABSPATH . 'wp-admin/includes/media.php' );
+        require_once( ABSPATH . 'wp-admin/includes/file.php' );
+        require_once( ABSPATH . 'wp-admin/includes/image.php' );
+
+        $attachment_id = 0;
+        if ( $b64 ) {
+            $tmp = wp_tempnam( 'ai-image' ); file_put_contents( $tmp, base64_decode( $b64 ) );
+            $file_array = array( 'name' => 'ai-image.jpg', 'type' => 'image/jpeg', 'tmp_name' => $tmp, 'size' => filesize( $tmp ) );
+            $attachment_id = media_handle_sideload( $file_array, $post_id, 'AI Generated Image' );
+            @unlink( $tmp );
+        } elseif ( $url ) {
+            $attachment_id = media_sideload_image( $url, $post_id, 'AI Generated Image', 'id' );
+        }
+        if ( is_wp_error( $attachment_id ) || ! $attachment_id ) { $this->log_line( 'async_media_error', array( 'post_id' => $post_id, 'error' => is_wp_error( $attachment_id ) ? $attachment_id->get_error_message() : 'unknown' ) ); return; }
+        set_post_thumbnail( $post_id, $attachment_id );
+        $this->log_line( 'async_done', array( 'post_id' => $post_id, 'attachment_id' => $attachment_id ) );
     }
 
     /**
@@ -50,11 +137,7 @@ class AI_Featured_Image_API_Connector {
             wp_send_json_error( array( 'message' => __( 'OpenAI API key is not set.', 'ai-featured-image' ) ) );
         }
 
-        $prompt = sprintf(
-            'Create a high-quality featured image for a blog post titled "%s". The content is about: %s. Do not include any text, captions, labels, watermarks, typography, or logos in the image (text-free image).',
-            $post->post_title,
-            wp_strip_all_tags( $post->post_excerpt ? $post->post_excerpt : wp_trim_words( $post->post_content, 50 ) )
-        );
+        $prompt = $this->build_prompt( $post );
 
         $api_url = 'https://api.openai.com/v1/images/generations';
         $body    = array(

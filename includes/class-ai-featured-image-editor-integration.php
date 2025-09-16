@@ -3,35 +3,31 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 class AI_Featured_Image_Editor_Integration {
 	public function __construct() {
-		add_action( 'add_meta_boxes', array( $this, 'add_link_to_classic_editor' ) );
+		add_action( 'add_meta_boxes', array( $this, 'register_ai_meta_box' ) );
 		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_block_editor_assets' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ) );
 		add_action( 'admin_footer', array( $this, 'render_modal_html' ) );
 	}
 
-	public function add_link_to_classic_editor( $post_type ) {
+	public function register_ai_meta_box( $post_type ) {
 		if ( post_type_supports( $post_type, 'thumbnail' ) && current_user_can( 'upload_files' ) ) {
-			add_action( 'admin_footer-post.php', array( $this, 'render_classic_editor_link' ) );
-			add_action( 'admin_footer-post-new.php', array( $this, 'render_classic_editor_link' ) );
+			add_meta_box(
+				'ai-post-generator',
+				__( 'AI Post Generator', 'ai-featured-image' ),
+				array( $this, 'render_ai_meta_box' ),
+				$post_type,
+				'side',
+				'high'
+			);
 		}
 	}
 
-	public function render_classic_editor_link() {
-		$screen = get_current_screen();
-		if ( ! $screen || $screen->is_block_editor() ) return;
+	public function render_ai_meta_box( $post ) {
 		?>
-		<script type="text/javascript">
-		document.addEventListener('DOMContentLoaded', function(){
-			var div = document.getElementById('postimagediv');
-			if (!div) return;
-			var inside = div.querySelector('.inside');
-			if (!inside) return;
-			var a = document.createElement('a');
-			a.href = '#'; a.id = 'ai-featured-image-generate-button'; a.className = 'button'; a.style.marginTop = '10px';
-			a.innerText = '<?php echo esc_js( __( 'AI Beitragsbild festlegen', 'ai-featured-image' ) ); ?>';
-			inside.appendChild(a);
-		});
-		</script>
+		<p>
+			<button type="button" class="button button-secondary" id="ai-featured-image-generate-button"><?php esc_html_e( 'AI Beitragsbild festlegen', 'ai-featured-image' ); ?></button>
+		</p>
+		<p class="description"><?php esc_html_e( 'Open the AI generator to create a text-free featured image. More AI tools will appear here in future.', 'ai-featured-image' ); ?></p>
 		<?php
 	}
 
