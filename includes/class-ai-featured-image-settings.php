@@ -50,6 +50,9 @@ class AI_Featured_Image_Settings {
 		add_settings_field( 'image_style', __( 'Render Style (gpt-image-1)', 'ai-featured-image' ), array( $this, 'render_image_style_field' ), 'ai-featured-image-settings', 'image_settings' );
 		add_settings_field( 'num_images', __( 'Number of Images', 'ai-featured-image' ), array( $this, 'render_num_images_field' ), 'ai-featured-image-settings', 'image_settings' );
 
+		add_settings_section( 'content_settings', __( 'Default Content Settings', 'ai-featured-image' ), '__return_false', 'ai-featured-image-settings' );
+		add_settings_field( 'default_post_length', __( 'Default Post Length', 'ai-featured-image' ), array( $this, 'render_default_post_length_field' ), 'ai-featured-image-settings', 'content_settings' );
+
 		add_settings_section( 'automation_settings', __( 'Automation', 'ai-featured-image' ), '__return_false', 'ai-featured-image-settings' );
 		add_settings_field( 'auto_on_publish', __( 'Auto-generate on publish', 'ai-featured-image' ), array( $this, 'render_auto_on_publish_field' ), 'ai-featured-image-settings', 'automation_settings' );
 		add_settings_field( 'auto_only_if_missing', __( 'Only if no featured image is set', 'ai-featured-image' ), array( $this, 'render_auto_only_if_missing_field' ), 'ai-featured-image-settings', 'automation_settings' );
@@ -129,6 +132,24 @@ class AI_Featured_Image_Settings {
 		<?php
 	}
 
+	public function render_default_post_length_field() {
+		$options = get_option( $this->option_name );
+		$len = isset( $options['default_post_length'] ) ? $options['default_post_length'] : 'short';
+		$choices = array(
+			'short'    => __( 'KurZ (300–500 Worte)', 'ai-featured-image' ),
+			'medium'   => __( 'Mittel (800–1200 Worte)', 'ai-featured-image' ),
+			'long'     => __( 'Lang (1500–2000 Worte)', 'ai-featured-image' ),
+			'verylong' => __( 'Sehr lang (2500+ Worte)', 'ai-featured-image' ),
+		);
+		?>
+		<select name="<?php echo esc_attr( $this->option_name ); ?>[default_post_length]">
+			<?php foreach ( $choices as $k => $label ) : ?>
+				<option value="<?php echo esc_attr( $k ); ?>" <?php selected( $len, $k ); ?>><?php echo esc_html( $label ); ?></option>
+			<?php endforeach; ?>
+		</select>
+		<?php
+	}
+
 	public function render_auto_on_publish_field() {
 		$options = get_option( $this->option_name );
 		$enabled = ! empty( $options['auto_on_publish'] );
@@ -154,6 +175,10 @@ class AI_Featured_Image_Settings {
 		if ( isset( $input['styles_moods'] ) ) $san['styles_moods'] = sanitize_text_field( $input['styles_moods'] );
 		if ( isset( $input['image_style'] ) ) { $style = sanitize_text_field( $input['image_style'] ); $san['image_style'] = in_array( $style, array( 'vivid','natural' ), true ) ? $style : 'vivid'; }
 		if ( isset( $input['num_images'] ) ) { $n = max(1, min(4, intval( $input['num_images'] ))); $san['num_images'] = $n; }
+		if ( isset( $input['default_post_length'] ) ) {
+			$len = sanitize_text_field( $input['default_post_length'] );
+			$san['default_post_length'] = in_array( $len, array( 'short','medium','long','verylong' ), true ) ? $len : 'short';
+		}
 		$san['auto_on_publish']      = ! empty( $input['auto_on_publish'] ) ? 1 : 0;
 		$san['auto_only_if_missing'] = isset( $input['auto_only_if_missing'] ) ? ( $input['auto_only_if_missing'] ? 1 : 0 ) : 1;
 		return $san;

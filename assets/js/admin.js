@@ -13,6 +13,39 @@
 		closeModal.on('click', hideModal);
 		$(window).on('click', function(e){ if(e.target===modal[0]) hideModal(); });
 
+		$('#ai-generate-post-button').on('click', function(){
+			var btn=$(this), orig=btn.text(); btn.text(aiFeaturedImageData.i18n.generating_post||'Generating…').prop('disabled', true);
+			var length = $('#ai-post-length').val() || '';
+			$.post(aiFeaturedImageData.ajax_url, { action:'generate_ai_post', post_id: aiFeaturedImageData.post_id, length:length, nonce: aiFeaturedImageData.nonce }, function(resp){
+				if(resp && resp.success){
+					// Set content
+					if(aiFeaturedImageData.is_gutenberg && window.wp && wp.data){
+						wp.data.dispatch('core/editor').editPost({ content: resp.data.content_html });
+					}else{
+						if(window.tinyMCE && tinyMCE.activeEditor){ tinyMCE.activeEditor.setContent(resp.data.content_html); }
+						var $textarea = $('#content'); if($textarea.length){ $textarea.val(resp.data.content_html); }
+					}
+					// Set category (Classic)
+					if(!aiFeaturedImageData.is_gutenberg && resp.data.category_id){
+						var $cat = $('input[name="post_category[]"][value="'+resp.data.category_id+'"]');
+						if($cat.length){ $cat.prop('checked', true); }
+					}
+					// Add tags (Classic)
+					if(!aiFeaturedImageData.is_gutenberg && resp.data.tags && resp.data.tags.length){
+						var csv = resp.data.tags.join(',');
+						var $tagbox = $('#new-tag-post_tag');
+						if($tagbox.length){ $tagbox.val(csv); $('#tagsdiv-post_tag .tagadd').trigger('click'); }
+					}
+					// For Gutenberg we only show suggestions in console (IDs erfordern REST-Auflösung)
+					if(aiFeaturedImageData.is_gutenberg && resp.data.tags){ console.info('Suggested tags:', resp.data.tags); }
+				}else{
+					alert(resp && resp.data && resp.data.message ? resp.data.message : 'AI post generation failed');
+				}
+			}).fail(function(xhr){
+				alert('Network error during AI post generation'+(xhr && xhr.status ? (' (HTTP '+xhr.status+')') : ''));
+			}).always(function(){ btn.text(orig).prop('disabled', false); });
+		});
+
 		$('#ai-generate-image-button').on('click', function(){
 			var button = $(this), original = button.text();
 			button.text('Generating...').prop('disabled', true);

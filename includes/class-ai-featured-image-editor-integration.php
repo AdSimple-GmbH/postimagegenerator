@@ -23,11 +23,27 @@ class AI_Featured_Image_Editor_Integration {
 	}
 
 	public function render_ai_meta_box( $post ) {
+		$options = get_option( 'ai_featured_image_options' );
+		$default_len = isset( $options['default_post_length'] ) ? $options['default_post_length'] : 'short';
 		?>
 		<p>
 			<button type="button" class="button button-secondary" id="ai-featured-image-generate-button"><?php esc_html_e( 'AI Beitragsbild festlegen', 'ai-featured-image' ); ?></button>
 		</p>
-		<p class="description"><?php esc_html_e( 'Open the AI generator to create a text-free featured image. More AI tools will appear here in future.', 'ai-featured-image' ); ?></p>
+		<hr />
+		<p><strong><?php esc_html_e( 'AI-Beitrag erstellen', 'ai-featured-image' ); ?></strong></p>
+		<p>
+			<label for="ai-post-length"><small><?php esc_html_e( 'Länge', 'ai-featured-image' ); ?></small></label><br />
+			<select id="ai-post-length">
+				<option value="short" <?php selected( $default_len, 'short' ); ?>><?php esc_html_e( 'kurz (300–500)', 'ai-featured-image' ); ?></option>
+				<option value="medium" <?php selected( $default_len, 'medium' ); ?>><?php esc_html_e( 'mittel (800–1200)', 'ai-featured-image' ); ?></option>
+				<option value="long" <?php selected( $default_len, 'long' ); ?>><?php esc_html_e( 'lang (1500–2000)', 'ai-featured-image' ); ?></option>
+				<option value="verylong" <?php selected( $default_len, 'verylong' ); ?>><?php esc_html_e( 'sehr lang (2500+)', 'ai-featured-image' ); ?></option>
+			</select>
+		</p>
+		<p>
+			<button type="button" class="button button-primary" id="ai-generate-post-button"><?php esc_html_e( 'AI-Beitrag erstellen', 'ai-featured-image' ); ?></button>
+		</p>
+		<p class="description"><?php esc_html_e( 'Erstellt Inhalt, wählt Kategorie und setzt 7–10 Schlagwörter.', 'ai-featured-image' ); ?></p>
 		<?php
 	}
 
@@ -53,6 +69,7 @@ class AI_Featured_Image_Editor_Integration {
 			'is_gutenberg' => get_current_screen()->is_block_editor(),
 			'i18n'     => array(
 				'generating_keywords' => __( 'Generating...', 'ai-featured-image' ),
+				'generating_post'     => __( 'Generating post…', 'ai-featured-image' ),
 			),
 			'asset_version' => $js_ver,
 		) );

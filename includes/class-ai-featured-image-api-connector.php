@@ -23,6 +23,7 @@ class AI_Featured_Image_API_Connector {
         // Schedule async generation on first publish
         add_action( 'transition_post_status', array( $this, 'maybe_schedule_on_publish' ), 10, 3 );
         add_action( 'ai_featured_image_generate_async', array( $this, 'handle_generate_async' ), 10, 1 );
+        add_action( 'wp_ajax_generate_ai_post', array( $this, 'generate_ai_post_callback' ) );
     }
 
     private function build_prompt( $post ) {
@@ -108,6 +109,113 @@ class AI_Featured_Image_API_Connector {
         set_post_thumbnail( $post_id, $attachment_id );
         $this->log_line( 'async_done', array( 'post_id' => $post_id, 'attachment_id' => $attachment_id ) );
     }
+
+    public function generate_ai_post_callback() {
+		check_ajax_referer( 'ai_featured_image_nonce', 'nonce' );
+		if ( ! current_user_can( 'edit_posts' ) ) wp_send_json_error( array( 'message' => __( 'You do not have permission to perform this action.', 'ai-featured-image' ) ) );
+
+		$post_id = isset( $_POST['post_id'] ) ? intval( $_POST['post_id'] ) : 0;
+		$length  = isset( $_POST['length'] ) ? sanitize_text_field( $_POST['length'] ) : '';
+		$post = get_post( $post_id );
+		if ( ! $post ) wp_send_json_error( array( 'message' => __( 'Post not found.', 'ai-featured-image' ) ) );
+
+		$options = get_option( 'ai_featured_image_options' );
+		$api_key = ! empty( $options['api_key'] ) ? $options['api_key'] : '';
+		if ( empty( $api_key ) ) wp_send_json_error( array( 'message' => __( 'OpenAI API key is not set.', 'ai-featured-image' ) ) );
+
+		if ( empty( $length ) ) $length = ( isset( $options['default_post_length'] ) ? $options['default_post_length'] : 'short' );
+		$target_words = array( 'short'=>'300-500','medium'=>'800-1200','long'=>'1500-2000','verylong'=>'2500-3000' );
+		$min_words    = array( 'short'=>300, 'medium'=>800, 'long'=>1500, 'verylong'=>2500 );
+		$max_tokens   = array( 'short'=>1200, 'medium'=>2200, 'long'=>3200, 'verylong'=>4000 );
+		$range = isset( $target_words[$length] ) ? $target_words[$length] : '300-500';
+		$minw  = isset( $min_words[$length] ) ? intval( $min_words[$length] ) : 300;
+		$maxt  = isset( $max_tokens[$length] ) ? intval( $max_tokens[$length] ) : 1200;
+
+		$title = $post->post_title;
+		$context = wp_strip_all_tags( $post->post_excerpt ? $post->post_excerpt : wp_trim_words( $post->post_content, 80 ) );
+
+		$system = 'You are a senior German SEO copywriter. Always respond in valid JSON when asked, and ensure content_html is clean HTML (h2/h3, p, ul/ol, strong/em). Do not include inline CSS or scripts.';
+		$user   = sprintf(
+			'Title: %s\nTarget length: %s words. Minimum length: %d words. Context: %s\nReturn a strict JSON object with keys: content_html (string), category_name (string), tags (array of 7-10 simple terms without commas).\nConstraints for content_html: write German; start with an introductory h2; include 6-10 well-structured sections (h2/h3) with paragraphs and lists where useful; end with a Schluss/Fazit section; avoid fluff; avoid code; no images; no footers; no author bios.',
+			$title,
+			$range,
+			$minw,
+			$context
+		);
+
+		$payload = array(
+			'model' => 'gpt-4o',
+			'messages' => array(
+				array('role'=>'system','content'=>$system),
+				array('role'=>'user','content'=>$user),
+			),
+			'temperature' => 0.7,
+			'max_tokens'  => $maxt,
+			'response_format' => array('type' => 'json_object'),
+		);
+
+		$this->log_line( 'ai_post_request', array( 'post_id' => $post_id, 'length' => $length, 'min_words'=>$minw, 'max_tokens'=>$maxt ) );
+
+		$resp = wp_remote_post( 'https://api.openai.com/v1/chat/completions', array(
+			'headers' => array( 'Authorization'=>'Bearer '.$api_key, 'Content-Type'=>'application/json' ),
+			'body'    => wp_json_encode( $payload ),
+			'timeout' => 180
+		) );
+		if ( is_wp_error( $resp ) ) {
+			$this->log_line( 'ai_post_transport_error', array( 'post_id' => $post_id, 'error' => $resp->get_error_message() ) );
+			wp_send_json_error( array( 'message' => $resp->get_error_message() ) );
+		}
+		$status = wp_remote_retrieve_response_code( $resp );
+		$raw    = wp_remote_retrieve_body( $resp );
+		$this->log_line( 'ai_post_response', array( 'post_id' => $post_id, 'status' => $status, 'body_excerpt' => mb_substr( $raw, 0, 600 ) ) );
+
+		$data = json_decode( $raw, true );
+		if ( isset( $data['error'] ) ) wp_send_json_error( array( 'message' => $data['error']['message'] ) );
+		$content = isset( $data['choices'][0]['message']['content'] ) ? $data['choices'][0]['message']['content'] : '';
+
+		if ( is_string( $content ) ) {
+			$trim = trim( $content );
+			if ( ! $this->is_json_object( $trim ) ) {
+				$posStart = strpos( $trim, '{' );
+				$posEnd   = strrpos( $trim, '}' );
+				if ( $posStart !== false && $posEnd !== false && $posEnd > $posStart ) {
+					$trim = substr( $trim, $posStart, $posEnd - $posStart + 1 );
+				}
+				$content = $trim;
+			}
+		}
+
+		$json = json_decode( $content, true );
+		if ( ! is_array( $json ) || empty( $json['content_html'] ) ) {
+			$this->log_line( 'ai_post_parse_error', array( 'post_id' => $post_id, 'content_excerpt' => mb_substr( (string) $content, 0, 600 ) ) );
+			wp_send_json_error( array( 'message' => __( 'Model returned unexpected format.', 'ai-featured-image' ) ) );
+		}
+
+		$category_name = isset( $json['category_name'] ) ? sanitize_text_field( $json['category_name'] ) : '';
+		$tags          = isset( $json['tags'] ) && is_array( $json['tags'] ) ? array_map( 'sanitize_text_field', $json['tags'] ) : array();
+
+		$cat_id = 0;
+		if ( $category_name ) {
+			$exist = get_term_by( 'name', $category_name, 'category' );
+			if ( $exist && ! is_wp_error( $exist ) ) { $cat_id = intval( $exist->term_id ); }
+			else { $res = wp_insert_term( $category_name, 'category' ); if ( ! is_wp_error( $res ) ) $cat_id = intval( $res['term_id'] ); }
+		}
+
+		wp_send_json_success( array(
+			'content_html' => wp_kses_post( $json['content_html'] ),
+			'category_id'  => $cat_id,
+			'category_name'=> $category_name,
+			'tags'         => $tags,
+		) );
+	}
+
+	private function is_json_object( $text ) {
+		if ( ! is_string( $text ) ) return false;
+		$text = trim( $text );
+		if ( strlen( $text ) < 2 || $text[0] !== '{' || substr( $text, -1 ) !== '}' ) return false;
+		json_decode( $text );
+		return json_last_error() === JSON_ERROR_NONE;
+	}
 
     /**
      * AJAX callback to generate the image.
