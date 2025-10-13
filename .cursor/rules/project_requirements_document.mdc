@@ -2,6 +2,10 @@
 Update this rule if user requested changes to the project requirement, etc.
 # Project Requirements Document (PRD)
 
+## Project Rules
+
+- Documentation Language: English
+
 ## 1. Project Overview
 
 This project is a WordPress plugin that automatically generates a featured image for any post by sending its title and content to the OpenAI GPT Image-1 API. Inside the WordPress post editor, users with permission to set featured images will see an **“AI Beitragsbild festlegen”** link beneath the Featured Image panel. Clicking it opens a modal where they can tweak style, mood, quality preset, and dimensions before triggering the image-generation API. Once images are returned, the user picks their favorite, uploads it to the Media Library, and then confirms it as the post’s featured image.

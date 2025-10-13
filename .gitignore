@@ -5,6 +5,9 @@
 /xmlrpc.php
 /wp-*.php
 
+#Cypress
+/cypress/screenshots/
+
 # Logs and databases
 *.log
 npm-debug.log*

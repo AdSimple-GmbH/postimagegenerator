@@ -56,6 +56,11 @@ class AI_Featured_Image_Settings {
 		add_settings_section( 'automation_settings', __( 'Automation', 'ai-featured-image' ), '__return_false', 'ai-featured-image-settings' );
 		add_settings_field( 'auto_on_publish', __( 'Auto-generate on publish', 'ai-featured-image' ), array( $this, 'render_auto_on_publish_field' ), 'ai-featured-image-settings', 'automation_settings' );
 		add_settings_field( 'auto_only_if_missing', __( 'Only if no featured image is set', 'ai-featured-image' ), array( $this, 'render_auto_only_if_missing_field' ), 'ai-featured-image-settings', 'automation_settings' );
+
+		add_settings_section( 'editorial_settings', __( 'Redaktionelle Einstellungen', 'ai-featured-image' ), '__return_false', 'ai-featured-image-settings' );
+		add_settings_field( 'editorial_line', __( 'Blattlinie', 'ai-featured-image' ), array( $this, 'render_editorial_line_field' ), 'ai-featured-image-settings', 'editorial_settings' );
+		add_settings_field( 'author_style', __( 'Schreibstil', 'ai-featured-image' ), array( $this, 'render_author_style_field' ), 'ai-featured-image-settings', 'editorial_settings' );
+		add_settings_field( 'target_audience', __( 'Zielgruppe', 'ai-featured-image' ), array( $this, 'render_target_audience_field' ), 'ai-featured-image-settings', 'editorial_settings' );
 	}
 
 	public function render_api_key_field() {
@@ -166,6 +171,36 @@ class AI_Featured_Image_Settings {
 		<?php
 	}
 
+	public function render_editorial_line_field() {
+		$options = get_option( $this->option_name );
+		$editorial_line = isset( $options['editorial_line'] ) ? $options['editorial_line'] : '';
+		?>
+		<textarea name="<?php echo esc_attr( $this->option_name ); ?>[editorial_line]" rows="4" class="large-text"><?php echo esc_textarea( $editorial_line ); ?></textarea>
+		<p class="description"><?php esc_html_e( 'Beschreiben Sie die redaktionelle Linie Ihrer Publikation. Dies beeinflusst den Schreibstil der generierten Artikel.', 'ai-featured-image' ); ?></p>
+		<p class="description"><em><?php esc_html_e( 'Beispiel: "Wir sind eine progressive, technologieaffine Publikation, die komplexe Themen verständlich erklärt."', 'ai-featured-image' ); ?></em></p>
+		<?php
+	}
+
+	public function render_author_style_field() {
+		$options = get_option( $this->option_name );
+		$author_style = isset( $options['author_style'] ) ? $options['author_style'] : '';
+		?>
+		<textarea name="<?php echo esc_attr( $this->option_name ); ?>[author_style]" rows="4" class="large-text"><?php echo esc_textarea( $author_style ); ?></textarea>
+		<p class="description"><?php esc_html_e( 'Beschreiben Sie den gewünschten Schreibstil (z.B. sachlich, unterhaltsam, wissenschaftlich).', 'ai-featured-image' ); ?></p>
+		<p class="description"><em><?php esc_html_e( 'Beispiel: "Sachlich-informativ mit gelegentlichen anschaulichen Beispielen. Vermeide Fachjargon."', 'ai-featured-image' ); ?></em></p>
+		<?php
+	}
+
+	public function render_target_audience_field() {
+		$options = get_option( $this->option_name );
+		$target_audience = isset( $options['target_audience'] ) ? $options['target_audience'] : '';
+		?>
+		<textarea name="<?php echo esc_attr( $this->option_name ); ?>[target_audience]" rows="4" class="large-text"><?php echo esc_textarea( $target_audience ); ?></textarea>
+		<p class="description"><?php esc_html_e( 'Beschreiben Sie Ihre Zielgruppe (Alter, Interessen, Vorkenntnisse).', 'ai-featured-image' ); ?></p>
+		<p class="description"><em><?php esc_html_e( 'Beispiel: "Tech-interessierte Erwachsene zwischen 25-45 Jahren mit grundlegenden IT-Kenntnissen."', 'ai-featured-image' ); ?></em></p>
+		<?php
+	}
+
 	public function sanitize_options( $input ) {
 		$san = array();
 		if ( isset( $input['api_key'] ) ) $san['api_key'] = sanitize_text_field( $input['api_key'] );
@@ -181,6 +216,11 @@ class AI_Featured_Image_Settings {
 		}
 		$san['auto_on_publish']      = ! empty( $input['auto_on_publish'] ) ? 1 : 0;
 		$san['auto_only_if_missing'] = isset( $input['auto_only_if_missing'] ) ? ( $input['auto_only_if_missing'] ? 1 : 0 ) : 1;
+		
+		if ( isset( $input['editorial_line'] ) ) $san['editorial_line'] = sanitize_textarea_field( $input['editorial_line'] );
+		if ( isset( $input['author_style'] ) ) $san['author_style'] = sanitize_textarea_field( $input['author_style'] );
+		if ( isset( $input['target_audience'] ) ) $san['target_audience'] = sanitize_textarea_field( $input['target_audience'] );
+		
 		return $san;
 	}
 }

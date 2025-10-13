@@ -6,6 +6,12 @@
     "wp:admin": "docker compose run --rm wpcli sh -lc \"wp user create admin admin@example.com --role=administrator --user_pass=admin || wp user update admin --user_pass=admin\"",
     "wp:activate": "docker compose run --rm wpcli wp plugin activate ai-featured-image",
     "cypress:open": "cypress open",
+    "test": "cypress run --spec 'cypress/e2e/ai-dashboard.cy.js,cypress/e2e/ai-rest-api.cy.js,cypress/e2e/ai-prompt-management.cy.js'",
+    "test:all": "cypress run",
+    "test:dashboard": "cypress run --spec 'cypress/e2e/ai-dashboard.cy.js'",
+    "test:api": "cypress run --spec 'cypress/e2e/ai-rest-api.cy.js'",
+    "test:prompts": "cypress run --spec 'cypress/e2e/ai-prompt-management.cy.js'",
+    "test:watch": "cypress open",
     "test:e2e": "cypress run"
   },
   "devDependencies": {
