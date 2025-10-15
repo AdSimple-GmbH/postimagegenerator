@@ -13,39 +13,34 @@ Das Projekt ist ein WordPress-Plugin zur KI-gestützten Generierung von Featured
 ### Status-Übersicht
 - ✅ **Gut:** 6 Aspekte
 - ⚠️ **Verbesserungsbedarf:** 8 Probleme
-- 🔴 **Kritisch:** 4 Probleme
+- 🔴 **Kritisch:** 3 Probleme (1 erledigt ✅)
 - 📚 **Dokumentation:** 2 Lücken
 
 ---
 
 ## 🔴 Kritische Probleme
 
-### 1. Doppelte Plugin-Hauptdateien
+### 1. Doppelte Plugin-Hauptdateien ✅ **ERLEDIGT**
+
+**Status:** ✅ Behoben am 2025-10-15
 
 **Beschreibung:**
-Es existieren zwei verschiedene Plugin-Hauptdateien im Repository:
+Es existierten zwei verschiedene Plugin-Hauptdateien im Repository:
 - `ai-featured-image.php` (Hauptverzeichnis, neuere Version mit mehr Features)
 - `ai-featured-image-generator-plugin/ai-featured-image.php` (Unterverzeichnis, ältere Version)
 
-**Betroffene Dateien:**
-- `ai-featured-image.php:1-61`
-- `ai-featured-image-generator-plugin/ai-featured-image.php:1-39`
-
-**Auswirkung:**
-- Verwirrung bei der Installation
-- Potenzielle Konflikte wenn beide aktiviert werden
-- Unklare Versionierung
-
-**Empfohlene Lösung:**
+**Durchgeführte Lösung:**
 ```bash
-# Option 1: Alten Ordner löschen
+# Alter Ordner wurde vollständig entfernt
 rm -rf ai-featured-image-generator-plugin/
-
-# Option 2: Als Archiv kennzeichnen
-mv ai-featured-image-generator-plugin/ _archive_old_version/
 ```
 
-**Priorität:** 🔴 Sofort beheben
+**Ergebnis:**
+- ✅ Nur noch eine Plugin-Hauptdatei im Hauptverzeichnis
+- ✅ Keine Konflikts mehr möglich
+- ✅ Klare Projektstruktur
+
+**~~Priorität:~~ ~~🔴 Sofort beheben~~ → ✅ Erledigt**
 
 ---
 
@@ -273,23 +268,25 @@ Großschreibungsfehler in der Längenauswahl.
 
 ---
 
-### 8. Unvollständige Debug-Log-Implementierung
+### 8. Unvollständige Debug-Log-Implementierung ✅ **TEILWEISE ERLEDIGT**
+
+**Status:** ✅ Alte Logger-Klasse wurde mit Ordner entfernt
 
 **Beschreibung:**
-Zwei verschiedene Logging-Systeme existieren parallel.
+Zwei verschiedene Logging-Systeme existierten parallel.
 
 **Betroffene Dateien:**
-- `ai-featured-image-generator-plugin/includes/class-ai-featured-image-logger.php` (alte Version, ungenutzt)
-- `includes/class-ai-featured-image-api-connector.php:62-72` (neue Version, verwendet)
+- ~~`ai-featured-image-generator-plugin/includes/class-ai-featured-image-logger.php`~~ ✅ **ENTFERNT**
+- `includes/class-ai-featured-image-api-connector.php:62-72` (aktuelle Version, verwendet)
 
-**Problem:**
-- Inkonsistenz im Logging-Verhalten
-- Alte Logger-Klasse ist toter Code
-- Keine zentrale Logging-Konfiguration
+**~~Problem:~~**
+- ~~Inkonsistenz im Logging-Verhalten~~ ✅ Behoben
+- ~~Alte Logger-Klasse ist toter Code~~ ✅ Entfernt
+- ⚠️ Noch offen: Keine zentrale Logging-Konfiguration
 
-**Empfohlene Lösung:**
-1. Entfernen Sie `class-ai-featured-image-logger.php`
-2. Erstellen Sie eine zentrale Logger-Klasse:
+**Verbleibende Empfehlung:**
+1. ~~Entfernen Sie `class-ai-featured-image-logger.php`~~ ✅ Erledigt
+2. Optional: Erstellen Sie eine zentrale Logger-Klasse für bessere Wartbarkeit:
 
 ```php
 class AI_Featured_Image_Logger {
@@ -314,7 +311,7 @@ class AI_Featured_Image_Logger {
 }
 ```
 
-**Priorität:** ⚠️ Mittelfristig
+**Priorität:** ⚠️ ~~Mittelfristig~~ → ✅ Hauptproblem behoben, Rest optional
 
 ---
 
@@ -922,9 +919,10 @@ add_filter( 'pre_http_request', function( $preempt, $args, $url ) {
 
 ### 🔴 Sofort (Kritisch)
 
-- [ ] **#1**: Doppelte Plugin-Dateien bereinigen
-  - Entferne `ai-featured-image-generator-plugin/` Ordner
-  - Aktualisiere Dokumentation falls nötig
+- [x] **#1**: Doppelte Plugin-Dateien bereinigen ✅ **ERLEDIGT (2025-10-15)**
+  - ✅ Ordner `ai-featured-image-generator-plugin/` wurde entfernt
+  - ✅ Nur noch eine Plugin-Hauptdatei vorhanden (`ai-featured-image.php`)
+  - ✅ Projektstruktur ist jetzt eindeutig
 
 - [ ] **#2**: `.env.example` erstellen
   - Kopiere `.env` → `.env.example`
@@ -962,9 +960,9 @@ add_filter( 'pre_http_request', function( $preempt, $args, $url ) {
 
 ### 💡 Mittelfristig (Nächste 1-2 Monate)
 
-- [ ] **#8**: Logging vereinheitlichen
-  - Entferne alte Logger-Klasse
-  - Erstelle zentrale Logging-Klasse
+- [x] **#8**: Logging vereinheitlichen ✅ **TEILWEISE ERLEDIGT**
+  - ✅ Alte Logger-Klasse entfernt
+  - ⚠️ Optional: Zentrale Logging-Klasse erstellen (Nice-to-have)
 
 - [ ] **#9**: Code-Duplikation entfernen
   - Extrahiere gemeinsame Post-Generierungs-Logik
