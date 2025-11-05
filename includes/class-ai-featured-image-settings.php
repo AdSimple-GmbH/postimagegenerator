@@ -141,7 +141,7 @@ class AI_Featured_Image_Settings {
 		$options = get_option( $this->option_name );
 		$len = isset( $options['default_post_length'] ) ? $options['default_post_length'] : 'short';
 		$choices = array(
-			'short'    => __( 'KurZ (300–500 Worte)', 'ai-featured-image' ),
+			'short'    => __( 'Kurz (300–500 Worte)', 'ai-featured-image' ),
 			'medium'   => __( 'Mittel (800–1200 Worte)', 'ai-featured-image' ),
 			'long'     => __( 'Lang (1500–2000 Worte)', 'ai-featured-image' ),
 			'verylong' => __( 'Sehr lang (2500+ Worte)', 'ai-featured-image' ),
