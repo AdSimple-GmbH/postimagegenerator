@@ -1,0 +1,15 @@
+# AI Featured Image POT Template
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: AI Featured Image 1.0.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-11-06 00:00+0000\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: manual\n"
+"X-Domain: ai-featured-image\n"
+
+# This is a minimal template. Run a proper i18n tool to refresh entries.
+

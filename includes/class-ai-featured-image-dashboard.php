@@ -72,7 +72,6 @@ class AI_Featured_Image_Dashboard {
 				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
 				'nonce' => wp_create_nonce( 'ai_dashboard_nonce' ),
 				'restUrl' => rest_url( 'ai-featured-image/v1/generate-post' ),
-				'restNonce' => wp_create_nonce( 'wp_rest' ),
 			)
 		);
 	}

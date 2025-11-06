@@ -95,7 +95,7 @@ class AI_Featured_Image_API_Connector {
         if ( has_post_thumbnail( $post ) ) { $this->log_line( 'skip_async_has_thumbnail', array( 'post_id' => $post_id ) ); return; }
 
         $options = get_option( 'ai_featured_image_options' );
-        $api_key = ! empty( $options['api_key'] ) ? $options['api_key'] : '';
+        $api_key = defined( 'OPENAI_API_KEY' ) ? OPENAI_API_KEY : ( ! empty( $options['api_key'] ) ? $options['api_key'] : '' );
         $size    = ! empty( $options['image_dimensions'] ) ? $options['image_dimensions'] : '1024x1024';
         if ( empty( $api_key ) ) { $this->log_line( 'skip_async_missing_key', array( 'post_id' => $post_id ) ); return; }
 
@@ -144,8 +144,8 @@ class AI_Featured_Image_API_Connector {
 		$post = get_post( $post_id );
 		if ( ! $post ) wp_send_json_error( array( 'message' => __( 'Post not found.', 'ai-featured-image' ) ) );
 
-		$options = get_option( 'ai_featured_image_options' );
-		$api_key = ! empty( $options['api_key'] ) ? $options['api_key'] : '';
+        $options = get_option( 'ai_featured_image_options' );
+        $api_key = defined( 'OPENAI_API_KEY' ) ? OPENAI_API_KEY : ( ! empty( $options['api_key'] ) ? $options['api_key'] : '' );
 		if ( empty( $api_key ) ) wp_send_json_error( array( 'message' => __( 'OpenAI API key is not set.', 'ai-featured-image' ) ) );
 
 		if ( empty( $length ) ) $length = ( isset( $options['default_post_length'] ) ? $options['default_post_length'] : 'short' );
@@ -211,54 +211,20 @@ class AI_Featured_Image_API_Connector {
 			$maxt = $user_config['max_tokens'];
 		}
 
-		$payload = array(
-			'model' => $model,
-			'messages' => array(
-				array('role'=>'system','content'=>$system),
-				array('role'=>'user','content'=>$user),
-			),
-			'max_completion_tokens' => $maxt,
-		);
-
-		// GPT-5 models only support temperature=1 (default), so we skip temperature parameter
-		if ( strpos( $model, 'gpt-5' ) === false && strpos( $model, 'o1' ) === false ) {
-			$payload['temperature'] = $temperature;
-		}
-
-		if ( $response_format === 'json_object' ) {
-			$payload['response_format'] = array( 'type' => 'json_object' );
-		}
-
 		$this->log_line( 'ai_post_request', array( 'post_id' => $post_id, 'length' => $length, 'min_words'=>$minw, 'max_tokens'=>$maxt ) );
 
-		$resp = wp_remote_post( 'https://api.openai.com/v1/chat/completions', array(
-			'headers' => array( 'Authorization'=>'Bearer '.$api_key, 'Content-Type'=>'application/json' ),
-			'body'    => wp_json_encode( $payload ),
-			'timeout' => 180
-		) );
-		if ( is_wp_error( $resp ) ) {
-			$this->log_line( 'ai_post_transport_error', array( 'post_id' => $post_id, 'error' => $resp->get_error_message() ) );
-			wp_send_json_error( array( 'message' => $resp->get_error_message() ) );
+		$response = $this->perform_chat_completion( $model, $system, $user, $maxt, $temperature, $response_format, $api_key );
+		if ( isset( $response['error'] ) && is_wp_error( $response['error'] ) ) {
+			$this->log_line( 'ai_post_transport_error', array( 'post_id' => $post_id, 'error' => $response['error']->get_error_message() ) );
+			wp_send_json_error( array( 'message' => $response['error']->get_error_message() ) );
 		}
-		$status = wp_remote_retrieve_response_code( $resp );
-		$raw    = wp_remote_retrieve_body( $resp );
-		$this->log_line( 'ai_post_response', array( 'post_id' => $post_id, 'status' => $status, 'body_excerpt' => mb_substr( $raw, 0, 600 ) ) );
+		$status = $response['status'];
+		$raw    = $response['raw'];
+		$this->log_line( 'ai_post_response', array( 'post_id' => $post_id, 'status' => $status, 'body_excerpt' => mb_substr( (string) $raw, 0, 600 ) ) );
 
-		$data = json_decode( $raw, true );
+		$data = $response['data'];
 		if ( isset( $data['error'] ) ) wp_send_json_error( array( 'message' => $data['error']['message'] ) );
-		$content = isset( $data['choices'][0]['message']['content'] ) ? $data['choices'][0]['message']['content'] : '';
-
-		if ( is_string( $content ) ) {
-			$trim = trim( $content );
-			if ( ! $this->is_json_object( $trim ) ) {
-				$posStart = strpos( $trim, '{' );
-				$posEnd   = strrpos( $trim, '}' );
-				if ( $posStart !== false && $posEnd !== false && $posEnd > $posStart ) {
-					$trim = substr( $trim, $posStart, $posEnd - $posStart + 1 );
-				}
-				$content = $trim;
-			}
-		}
+		$content = is_string( $response['content'] ) ? $response['content'] : '';
 
 		$json = json_decode( $content, true );
 		if ( ! is_array( $json ) || empty( $json['content_html'] ) ) {
@@ -357,6 +323,68 @@ class AI_Featured_Image_API_Connector {
 		json_decode( $text );
 		return json_last_error() === JSON_ERROR_NONE;
 	}
+
+    /**
+     * Perform a chat completion request and normalize the response.
+     *
+     * @param string $model
+     * @param string $system System prompt
+     * @param string $user   User prompt
+     * @param int    $max_tokens Max completion tokens
+     * @param float|int $temperature Temperature (ignored for GPT-5 family)
+     * @param string $response_format 'text' or 'json_object'
+     * @param string $api_key OpenAI API key
+     * @return array Array with keys: status, raw, data (decoded JSON), content (string)
+     */
+    private function perform_chat_completion( $model, $system, $user, $max_tokens, $temperature, $response_format, $api_key ) {
+        $payload = array(
+            'model' => $model,
+            'messages' => array(
+                array('role' => 'system', 'content' => $system),
+                array('role' => 'user',   'content' => $user),
+            ),
+            'max_completion_tokens' => $max_tokens,
+        );
+
+        // GPT-5 models only support temperature=1 (default)
+        if ( strpos( $model, 'gpt-5' ) === false && strpos( $model, 'o1' ) === false ) {
+            $payload['temperature'] = $temperature;
+        }
+
+        if ( $response_format === 'json_object' || $response_format === 'json' ) {
+            $payload['response_format'] = array( 'type' => 'json_object' );
+        }
+
+        $resp = wp_remote_post( 'https://api.openai.com/v1/chat/completions', array(
+            'headers' => array( 'Authorization' => 'Bearer ' . $api_key, 'Content-Type' => 'application/json' ),
+            'body'    => wp_json_encode( $payload ),
+            'timeout' => 180,
+        ) );
+
+        if ( is_wp_error( $resp ) ) {
+            return array( 'status' => 0, 'raw' => '', 'data' => null, 'content' => '', 'error' => $resp );
+        }
+
+        $status = wp_remote_retrieve_response_code( $resp );
+        $raw    = wp_remote_retrieve_body( $resp );
+        $data   = json_decode( $raw, true );
+        $content = isset( $data['choices'][0]['message']['content'] ) ? $data['choices'][0]['message']['content'] : '';
+
+        // Extract braces if model returned text around JSON
+        if ( is_string( $content ) ) {
+            $trim = trim( $content );
+            if ( ! $this->is_json_object( $trim ) ) {
+                $posStart = strpos( $trim, '{' );
+                $posEnd   = strrpos( $trim, '}' );
+                if ( $posStart !== false && $posEnd !== false && $posEnd > $posStart ) {
+                    $trim = substr( $trim, $posStart, $posEnd - $posStart + 1 );
+                }
+                $content = $trim;
+            }
+        }
+
+        return compact( 'status', 'raw', 'data', 'content' );
+    }
 
 	/**
 	 * Count words in HTML content.
@@ -633,27 +661,30 @@ Antworte NUR mit dem gekürzten HTML-Inhalt (keine JSON, kein zusätzlicher Text
 				'post_id' => array(
 					'required' => true,
 					'type' => 'integer',
-					'validate_callback' => function( $param ) {
-						return is_numeric( $param ) && $param > 0;
-					}
+					'sanitize_callback' => function( $value ) { return absint( $value ); },
+					'validate_callback' => function( $param ) { return is_numeric( $param ) && $param > 0; }
 				),
 				'length' => array(
 					'required' => false,
 					'type' => 'string',
 					'default' => 'short',
-					'enum' => array( 'short', 'medium', 'long', 'verylong' )
+					'enum' => array( 'short', 'medium', 'long', 'verylong' ),
+					'sanitize_callback' => function( $value ) { return sanitize_text_field( $value ); }
 				),
 				'auto_correct' => array(
 					'required' => false,
 					'type' => 'boolean',
-					'default' => true
+					'default' => true,
+					'sanitize_callback' => function( $value ) { return (bool) $value; }
 				),
 				'max_corrections' => array(
 					'required' => false,
 					'type' => 'integer',
 					'default' => 2,
 					'minimum' => 0,
-					'maximum' => 3
+					'maximum' => 3,
+					'sanitize_callback' => function( $value ) { $v = absint( $value ); return min( max( $v, 0 ), 3 ); },
+					'validate_callback' => function( $param ) { return is_numeric( $param ); }
 				)
 			)
 		) );
@@ -697,8 +728,8 @@ Antworte NUR mit dem gekürzten HTML-Inhalt (keine JSON, kein zusätzlicher Text
 			);
 		}
 
-		$options = get_option( 'ai_featured_image_options' );
-		$api_key = ! empty( $options['api_key'] ) ? $options['api_key'] : '';
+        $options = get_option( 'ai_featured_image_options' );
+        $api_key = defined( 'OPENAI_API_KEY' ) ? OPENAI_API_KEY : ( ! empty( $options['api_key'] ) ? $options['api_key'] : '' );
 		if ( empty( $api_key ) ) {
 			return new WP_Error(
 				'api_key_missing',
@@ -762,26 +793,6 @@ Antworte NUR mit dem gekürzten HTML-Inhalt (keine JSON, kein zusätzlicher Text
 		$user = $user_prompt;
 
 		// Initial generation with CPT prompt settings
-		$payload = array(
-			'model' => $model,
-			'messages' => array(
-				array('role'=>'system','content'=>$system),
-				array('role'=>'user','content'=>$user),
-			),
-			'max_completion_tokens' => $max_tokens_prompt,
-		);
-
-		// GPT-5 models only support temperature=1 (default), so we skip temperature parameter
-		// Only add temperature for GPT-4 and other models that support it
-		if ( strpos( $model, 'gpt-5' ) === false && strpos( $model, 'o1' ) === false ) {
-			$payload['temperature'] = $temperature;
-		}
-
-		// Add response_format if specified
-		if ( $response_format === 'json_object' || $response_format === 'json' ) {
-			$payload['response_format'] = array('type' => 'json_object');
-		}
-
 		$this->log_line( 'rest_api_post_request', array( 
 			'post_id' => $post_id, 
 			'length' => $length, 
@@ -790,23 +801,19 @@ Antworte NUR mit dem gekürzten HTML-Inhalt (keine JSON, kein zusätzlicher Text
 			'auto_correct' => $auto_correct
 		) );
 
-		$resp = wp_remote_post( 'https://api.openai.com/v1/chat/completions', array(
-			'headers' => array( 'Authorization'=>'Bearer '.$api_key, 'Content-Type'=>'application/json' ),
-			'body'    => wp_json_encode( $payload ),
-			'timeout' => 180
-		) );
+		$response = $this->perform_chat_completion( $model, $system, $user, $max_tokens_prompt, $temperature, $response_format, $api_key );
 
-		if ( is_wp_error( $resp ) ) {
-			$this->log_line( 'rest_api_transport_error', array( 'post_id' => $post_id, 'error' => $resp->get_error_message() ) );
-			return $resp;
+		if ( isset( $response['error'] ) && is_wp_error( $response['error'] ) ) {
+			$this->log_line( 'rest_api_transport_error', array( 'post_id' => $post_id, 'error' => $response['error']->get_error_message() ) );
+			return $response['error'];
 		}
 
-		$data = json_decode( wp_remote_retrieve_body( $resp ), true );
+		$data = $response['data'];
 		if ( isset( $data['error'] ) ) {
 			return new WP_Error( 'api_error', $data['error']['message'], array( 'status' => 500 ) );
 		}
 
-		$content = isset( $data['choices'][0]['message']['content'] ) ? $data['choices'][0]['message']['content'] : '';
+		$content = isset( $response['content'] ) ? $response['content'] : '';
 
 		// Parse JSON response
 		if ( is_string( $content ) ) {
@@ -843,10 +850,10 @@ Antworte NUR mit dem gekürzten HTML-Inhalt (keine JSON, kein zusätzlicher Text
 		$debug_info = array(
 			'initial_generation' => array(
 				'request' => array(
-					'model' => $payload['model'],
-					'temperature' => isset( $payload['temperature'] ) ? $payload['temperature'] : '1 (default)',
-					'max_tokens' => $payload['max_completion_tokens'],
-					'response_format' => isset( $payload['response_format'] ) ? $payload['response_format']['type'] : 'text',
+					'model' => $model,
+					'temperature' => ( strpos( $model, 'gpt-5' ) === false && strpos( $model, 'o1' ) === false ) ? $temperature : '1 (default)',
+					'max_tokens' => $max_tokens_prompt,
+					'response_format' => ( $response_format === 'json_object' || $response_format === 'json' ) ? 'json_object' : 'text',
 					'system_prompt' => substr( $system, 0, 500 ) . '...',
 					'system_prompt_full' => $system,
 					'system_prompt_id' => $system_prompt_id,
@@ -1008,7 +1015,7 @@ Antworte NUR mit dem gekürzten HTML-Inhalt (keine JSON, kein zusätzlicher Text
         }
 
         $options = get_option( 'ai_featured_image_options' );
-        $api_key = ! empty( $options['api_key'] ) ? $options['api_key'] : '';
+        $api_key = defined( 'OPENAI_API_KEY' ) ? OPENAI_API_KEY : ( ! empty( $options['api_key'] ) ? $options['api_key'] : '' );
         $size    = ! empty( $options['image_dimensions'] ) ? $options['image_dimensions'] : '1024x1024';
         if ( empty( $api_key ) ) {
             wp_send_json_error( array( 'message' => __( 'OpenAI API key is not set.', 'ai-featured-image' ) ) );
@@ -1051,8 +1058,16 @@ Antworte NUR mit dem gekürzten HTML-Inhalt (keine JSON, kein zusätzlicher Text
      */
     public function upload_image_callback() {
         check_ajax_referer( 'ai_featured_image_nonce', 'nonce' );
-        @ini_set( 'memory_limit', '512M' );
-        @set_time_limit( 180 );
+        // Raise memory limit for image processing if possible
+        if ( function_exists( 'wp_raise_memory_limit' ) ) {
+            wp_raise_memory_limit( 'image' );
+        }
+        // Increase execution time if allowed (avoid warnings when disabled)
+        $disabled = ini_get( 'disable_functions' );
+        $set_time_limit_disabled = is_string( $disabled ) && strpos( $disabled, 'set_time_limit' ) !== false;
+        if ( ! $set_time_limit_disabled && function_exists( 'set_time_limit' ) ) {
+            set_time_limit( 180 );
+        }
         if ( ! current_user_can( 'upload_files' ) ) {
             wp_send_json_error( array( 'message' => __( 'You do not have permission to perform this action.', 'ai-featured-image' ) ) );
         }

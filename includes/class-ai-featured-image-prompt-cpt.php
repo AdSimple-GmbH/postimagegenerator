@@ -21,6 +21,9 @@ class AI_Featured_Image_Prompt_CPT {
 		add_action( 'init', array( $this, 'register_taxonomy' ) );
 		add_action( 'add_meta_boxes', array( $this, 'add_meta_boxes' ) );
 		add_action( 'save_post_ai_prompt', array( $this, 'save_meta_boxes' ) );
+		// Auto-invalidate prompt cache on changes
+		add_action( 'save_post_ai_prompt', array( $this, 'clear_prompt_cache' ), 10, 1 );
+		add_action( 'delete_post', array( $this, 'clear_prompt_cache' ), 10, 1 );
 		add_filter( 'manage_ai_prompt_posts_columns', array( $this, 'add_custom_columns' ) );
 		add_action( 'manage_ai_prompt_posts_custom_column', array( $this, 'render_custom_columns' ), 10, 2 );
 		add_action( 'restrict_manage_posts', array( $this, 'add_admin_filters' ) );
@@ -28,6 +31,19 @@ class AI_Featured_Image_Prompt_CPT {
 		add_action( 'wp_ajax_test_ai_prompt', array( $this, 'ajax_test_prompt' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ) );
 		add_action( 'admin_notices', array( $this, 'show_validation_notices' ) );
+	}
+
+	/**
+	 * Clear prompt cache when a prompt is saved or deleted.
+	 *
+	 * @param int $post_id Post ID.
+	 */
+	public function clear_prompt_cache( $post_id ) {
+		if ( get_post_type( $post_id ) !== 'ai_prompt' ) {
+			return;
+		}
+		$loader = new AI_Featured_Image_Prompt_Loader();
+		$loader->clear_cache();
 	}
 
 	/**
@@ -686,7 +702,7 @@ class AI_Featured_Image_Prompt_CPT {
 
 		// Test API call
 		$options = get_option( 'ai_featured_image_options' );
-		$api_key = ! empty( $options['api_key'] ) ? $options['api_key'] : '';
+		$api_key = defined( 'OPENAI_API_KEY' ) ? OPENAI_API_KEY : ( ! empty( $options['api_key'] ) ? $options['api_key'] : '' );
 
 		if ( empty( $api_key ) ) {
 			wp_send_json_error( array( 'message' => __( 'OpenAI API Key nicht konfiguriert.', 'ai-featured-image' ) ) );

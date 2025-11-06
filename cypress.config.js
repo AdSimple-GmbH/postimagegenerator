@@ -18,11 +18,11 @@ module.exports = defineConfig({
 			wpAdminPath: '/wp-admin/',
 			wpLoginPath: '/wp-login.php'
 		},
-		// Retry failed tests once (useful for API tests)
-		retries: {
-			runMode: 1,
-			openMode: 0
-		}
+        // Retry failed tests (useful for flaky external API calls)
+        retries: {
+            runMode: 2,
+            openMode: 0
+        }
 	}
 });
 

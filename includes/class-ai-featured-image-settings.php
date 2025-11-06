@@ -66,9 +66,13 @@ class AI_Featured_Image_Settings {
 	public function render_api_key_field() {
 		$options = get_option( $this->option_name );
 		$api_key = isset( $options['api_key'] ) ? $options['api_key'] : '';
+		$constant_active = defined( 'OPENAI_API_KEY' ) && OPENAI_API_KEY;
 		?>
-		<input type="password" name="<?php echo esc_attr( $this->option_name ); ?>[api_key]" value="<?php echo esc_attr( $api_key ); ?>" class="regular-text" />
+		<input type="password" name="<?php echo esc_attr( $this->option_name ); ?>[api_key]" value="<?php echo esc_attr( $api_key ); ?>" class="regular-text" <?php echo $constant_active ? 'disabled' : ''; ?> />
 		<p class="description"><?php esc_html_e( 'Enter your OpenAI API key.', 'ai-featured-image' ); ?></p>
+		<?php if ( $constant_active ) : ?>
+			<p class="description"><strong><?php esc_html_e( 'Note:', 'ai-featured-image' ); ?></strong> <?php esc_html_e( 'The OPENAI_API_KEY constant is defined in wp-config.php and will be used instead of this setting.', 'ai-featured-image' ); ?></p>
+		<?php endif; ?>
 		<?php
 	}
 
