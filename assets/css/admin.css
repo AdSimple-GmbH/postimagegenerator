@@ -1,4 +1,5 @@
-.ai-modal{position:fixed;z-index:10000;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.4);display:none}
+.ai-modal{position:fixed;z-index:10000;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.4);display:none !important}
+.ai-modal[style*="display: block"]{display:block !important}
 .ai-modal-content{background:#fff;margin:5% auto;padding:20px;border:1px solid #ddd;max-width:720px;position:relative}
 .ai-modal-close{position:absolute;right:12px;top:8px;font-size:20px;cursor:pointer}
 .ai-loading{display:flex;align-items:center;gap:8px;margin-top:12px}

@@ -78,6 +78,8 @@ class AI_Featured_Image_Editor_Integration {
 	public function render_modal_html() {
 		$screen = get_current_screen();
 		if ( ! $screen || 'post' !== $screen->base ) return;
+		// Explicitly exclude dashboard to prevent overlay issues
+		if ( 'dashboard' === $screen->id ) return;
 		$options = get_option( 'ai_featured_image_options' );
 		$dimensions = ! empty( $options['image_dimensions'] ) ? $options['image_dimensions'] : '1024x1024';
 		$num_images = ! empty( $options['num_images'] ) ? intval( $options['num_images'] ) : 1;

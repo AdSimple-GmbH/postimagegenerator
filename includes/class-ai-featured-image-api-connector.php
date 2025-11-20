@@ -346,7 +346,7 @@ class AI_Featured_Image_API_Connector {
             'max_completion_tokens' => $max_tokens,
         );
 
-        // GPT-5 models only support temperature=1 (default)
+        // GPT-5 family models only support temperature=1 (default)
         if ( strpos( $model, 'gpt-5' ) === false && strpos( $model, 'o1' ) === false ) {
             $payload['temperature'] = $temperature;
         }
@@ -570,7 +570,7 @@ Antworte NUR mit dem gekürzten HTML-Inhalt (keine JSON, kein zusätzlicher Text
 			'max_completion_tokens' => $max_tokens,
 		);
 
-		// GPT-5 models only support temperature=1 (default), so we skip temperature parameter
+		// GPT-5 family models only support temperature=1 (default), so we skip temperature parameter
 		if ( strpos( $model, 'gpt-5' ) === false && strpos( $model, 'o1' ) === false ) {
 			$payload['temperature'] = $temperature;
 		}
@@ -616,7 +616,7 @@ Antworte NUR mit dem gekürzten HTML-Inhalt (keine JSON, kein zusätzlicher Text
 			$system_prompt_id = $this->prompt_loader->get_prompt_id( 'system-correction' );
 			$correction_prompt_id = $this->prompt_loader->get_prompt_id( $slug );
 			
-			// Check if temperature was actually used (not for GPT-5 models)
+			// Check if temperature was actually used (not for GPT-5 family models)
 			$temp_display = ( strpos( $model, 'gpt-5' ) === false && strpos( $model, 'o1' ) === false ) ? $temperature : '1 (default)';
 			
 			$debug_info['corrections'][] = array(

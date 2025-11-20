@@ -258,7 +258,7 @@ class AI_Featured_Image_Prompt_CPT {
 
 		// Calculate estimated cost
 		$cost_per_1m = array(
-			'gpt-5' => 1.25,
+			'gpt-5.1' => 1.25,
 			'gpt-5-mini' => 0.25,
 			'gpt-5-nano' => 0.05,
 			'gpt-image-1' => 0.00,
@@ -271,7 +271,7 @@ class AI_Featured_Image_Prompt_CPT {
 				<th><label for="gpt_model"><?php esc_html_e( 'Modell', 'ai-featured-image' ); ?></label></th>
 				<td>
 					<select id="gpt_model" name="gpt_model" class="widefat">
-						<option value="gpt-5" <?php selected( $gpt_model, 'gpt-5' ); ?>>GPT-5 ($1.25)</option>
+						<option value="gpt-5.1" <?php selected( $gpt_model, 'gpt-5.1' ); ?>>GPT-5.1 ($1.25)</option>
 						<option value="gpt-5-mini" <?php selected( $gpt_model, 'gpt-5-mini' ); ?>>GPT-5 mini ($0.25)</option>
 						<option value="gpt-5-nano" <?php selected( $gpt_model, 'gpt-5-nano' ); ?>>GPT-5 nano ($0.05)</option>
 						<option value="gpt-image-1" <?php selected( $gpt_model, 'gpt-image-1' ); ?>>GPT Image-1</option>
